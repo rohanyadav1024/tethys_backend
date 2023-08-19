@@ -1,0 +1,1 @@
+www : uvicorn app.main:app --relod
