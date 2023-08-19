@@ -1,1 +1,1 @@
-www : uvicorn app.main:app --relod
+www : uvicorn app.main:app --reload
