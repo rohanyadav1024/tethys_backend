@@ -9,10 +9,10 @@ class Employees(Base):
     id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     role = Column(Integer, nullable=False)
     name = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=True, index=True, unique=True)
+    email = Column(String(255), nullable=False, index=True, unique=True)
     password = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    phone = Column(String(10), nullable=False, unique=True, index=True)
+    phone = Column(String(10), nullable=True, unique=True, index=True)
     is_active = Column(Boolean, nullable=False, default=False)
 
     # def as_dict(self):
@@ -26,10 +26,10 @@ class Owners(Base):
 
     id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     name = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=True, index=True, unique=True)
+    email = Column(String(255), nullable=False, index=True, unique=True)
     password = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    phone = Column(String(10), nullable=False, unique=True, index=True)
+    phone = Column(String(10), nullable=True, unique=True, index=True)
     is_active = Column(Boolean, nullable=False, default=False)
 
     __allow_unmapped__ = True
