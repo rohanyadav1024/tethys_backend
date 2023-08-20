@@ -10,8 +10,9 @@ class Settings(BaseSettings):
     algorithm: str
     expiry_time_taken: int 
     secret_owner_key: str
+    postgresql_url : str
 
-    mysql_url : str
+    # mysql_url : str
     # sender_id:str
     # database_username: str = os.environ.get("DATABASE_USERNAME")
     # database_name: str = os.environ.get("DATABASE_NAME")

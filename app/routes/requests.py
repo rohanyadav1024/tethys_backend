@@ -14,7 +14,6 @@ router = APIRouter(prefix='/requests', tags=["Request"])
 def get_owners_list(db: Session = Depends(get_db)):
 
     req_query = db.query(models.Emp_requests, models.Employees).join(models.Employees, models.Employees.id == models.Emp_requests.emp_id, isouter=True).all()
-    print(req_query)
 
     request = [
         {
@@ -40,10 +39,11 @@ def get_owners_list(db: Session = Depends(get_db)):
 def grant_permission(
         req: schemas.Requests,
         db: Session = Depends(get_db),
-        current_owner : models.Owners = Depends(oauth2.get_current_user_key)):
+        # current_owner : models.Owners = Depends(oauth2.get_current_user_key)
+        ):
 
-    if current_owner is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="you are not an owner")
+    # if current_owner is None:
+    #     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="you are not an owner")
 
     db_request = db.query(models.Emp_requests).filter(models.Emp_requests.req_id == req.req_id).first()
     if not db_request :

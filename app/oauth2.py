@@ -21,13 +21,10 @@ class JSONOAuth2PasswordBearer(OAuth2PasswordBearer):
     
     async def __call__(self, request: Request) -> str:
         body = await request.json()
-        print(request.headers)
         token = body.get("access_token")
         if token:
-            print('accesed')
             return token
         else:
-            print('unaccesed')
             return await super().__call__(request)
 
 json_oauth2_scheme = JSONOAuth2PasswordBearer(tokenUrl='login')
@@ -50,7 +47,6 @@ def verify_access_token(token: str, credential_exception):
         is_owner : bool = payload.get("is_owner")
 
         if id is None:
-            print('from oauth side')
             raise credential_exception
 
         token_data = schemas.TokenData(id=id, isowner = is_owner)
@@ -66,13 +62,10 @@ def get_current_user_key(
         db: Session = Depends(database.get_db)):
     credentials_exception = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials for getting user")
 
-    print('accessed in get current user key')
     user_token = verify_access_token(
         token=token,
         credential_exception=credentials_exception)
     
-    print('user token data ',token)
-    print('user token data ',user_token)
     
     if user_token.isowner :
         owner = db.query(models.Owners).filter(

@@ -25,7 +25,7 @@ def send_otp(username: schemas.EmailData):
      # Create email message
     msg = MIMEText(message)
     msg["Subject"] = subject
-    msg["From"] = "sender@example.com"  # This should be your Gmail address
+    msg["From"] = "ryy3490@gmail.com"  # This should be your Gmail address
     msg["To"] = username.email
 
     # Connect to Gmail SMTP server and send email
@@ -38,7 +38,3 @@ def send_otp(username: schemas.EmailData):
         return {"otp": otp}
     except Exception as e:
         return {"error": str(e)}
-    
-
-#     return {"message": "OTP sent successfully"}
-

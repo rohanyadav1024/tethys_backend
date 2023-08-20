@@ -30,6 +30,12 @@ def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
 
     if emp_query:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+    
+    if emp.phone:
+        emp_with_num = db.query(models.Employees).filter(models.Employees.phone == emp.phone).first()
+        if emp_with_num:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone number already exists")
+
 
     new_emp = emp.model_dump(exclude={"password"})
     hashed_pass = utils.hash(emp.password)
@@ -50,19 +56,20 @@ def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
 @router.get("/user", response_model=schemas.EmployeeOut, status_code=status.HTTP_302_FOUND)
 def get_single_user(user_input : schemas.UserId,
                     db: Session = Depends(get_db),
-                    current_user = Depends(oauth2.get_current_user_key)):
+                    # current_user = Depends(oauth2.get_current_user_key)
+                    ):
     
-    if current_user is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials, Please Login again")
+    # if current_user is None:
+    #     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials, Please Login again")
     
     #check login id is owner or employee
-    if hasattr(current_user, 'role') and current_user.id != user_input.user_id:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials")
+    # if hasattr(current_user, 'role') and current_user.id != user_input.user_id:
+    #     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials")
     
     user = db.query(models.Employees).filter(models.Employees.id == user_input.user_id).first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid Credentials, can not access")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not exist")
     else:
         return user
     
@@ -70,13 +77,14 @@ def get_single_user(user_input : schemas.UserId,
 @router.delete("/delete")
 def delete_user(user_input : schemas.UserId,
                 db: Session = Depends(get_db),
-                current_user = Depends(oauth2.get_current_user_key)):
+                # current_user = Depends(oauth2.get_current_user_key)
+                ):
     
-    if current_user is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials, login again")
+    # if current_user is None:
+    #     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials, login again")
     
-    if hasattr(current_user, 'role') and current_user.id != user_input.user_id:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials")
+    # if hasattr(current_user, 'role') and current_user.id != user_input.user_id:
+    #     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,detail="Invalid Credentials")
 
     user = db.query(models.Employees).filter(models.Employees.id == user_input.user_id)
     if user.first() == None:

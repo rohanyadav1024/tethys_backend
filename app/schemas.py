@@ -78,5 +78,5 @@ class EmailData(BaseModel):
 class UserId(BaseModel):
     user_id: int
 
-class SecretKey(BaseModel):
+class SecretKey(UserId):
     secret_key: str
