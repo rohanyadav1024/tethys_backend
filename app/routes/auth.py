@@ -43,5 +43,6 @@ def user_login(user_credential: schemas.OAuth2PasswordRequestFormJSON,
     #     user_detials["role"] = db_user.role
     #     return schemas.LoginResponseEmployee(access_token=token, token_type="bearer", employee=user_detials)
 
-    return schemas.LoginResponse(access_token=token, token_type="bearer", user=user_detials)
+    return schemas.LoginResponse(status='200',
+        access_token=token, token_type="bearer", user=user_detials)
     # return schemas.Token(access_token=token, token_type="bearer")
