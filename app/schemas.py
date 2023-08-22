@@ -1,10 +1,13 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class OAuth2PasswordRequestFormJSON(BaseModel):
     username : str #phone number
     password : str
+
+class StatusClass(BaseModel):
+    status : str
 
 
 #owners
@@ -22,6 +25,16 @@ class OwnerOut(Owner):
     created_at: datetime
     is_active:bool
 
+    class Config():
+        orm_mode=True
+
+class OwnerData(StatusClass):
+    data : OwnerOut
+    class Config():
+        orm_mode=True
+
+class OwnerDataList(StatusClass):
+    data : List[OwnerOut]
     class Config():
         orm_mode=True
 
@@ -44,6 +57,17 @@ class EmployeeOut(Employee):
     class Config:
         orm_mode=True
 
+class EmployeeData(StatusClass):
+    data : EmployeeOut
+    class Config():
+        orm_mode=True
+
+class EmployeeDataList(StatusClass):
+    data : List[EmployeeOut]
+    class Config():
+        orm_mode=True
+
+
 
 #permission schema
 class Requests(BaseModel):
@@ -51,6 +75,9 @@ class Requests(BaseModel):
     
 class RequestsOut(Requests):
     employee: EmployeeOut
+    
+class RequestsData(StatusClass):
+    data: List[RequestsOut]
     
 
 
@@ -67,6 +94,7 @@ class Token(BaseModel):
 
 #authentication response with token
 class LoginResponse(Token):
+    status : str
     user: EmployeeOut
 
 

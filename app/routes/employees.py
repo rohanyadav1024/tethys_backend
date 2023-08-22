@@ -13,18 +13,22 @@ router = APIRouter(prefix='/employees', tags=["employee"])
 #   gate keeper = 3
 # }
 
-@router.get("/" , response_model=List[schemas.EmployeeOut],
+@router.get("/" ,
+             response_model=schemas.EmployeeDataList,
             status_code=status.HTTP_200_OK)
 def get_employees(db: Session = Depends(get_db)):
 
     emp_query = db.query(models.Employees).all()
 
-    return emp_query
+    return {
+            "status" : "200",
+            "data" : emp_query
+        }
 
 
 @router.post("/create", 
-             response_model=schemas.EmployeeOut,
-             status_code=status.HTTP_201_CREATED)
+             response_model=schemas.EmployeeData,
+             status_code=status.HTTP_200_OK)
 def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
     emp_query = db.query(models.Employees).filter(models.Employees.email == emp.email).first()
 
@@ -50,10 +54,15 @@ def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_emp)
 
-    return db_emp
+    return {
+            "status" : "200",
+            "data" : db_emp
+        }
 
 
-@router.get("/user", response_model=schemas.EmployeeOut, status_code=status.HTTP_302_FOUND)
+@router.post("/user",
+             response_model=schemas.EmployeeData,
+               status_code=status.HTTP_200_OK)
 def get_single_user(user_input : schemas.UserId,
                     db: Session = Depends(get_db),
                     # current_user = Depends(oauth2.get_current_user_key)
@@ -71,10 +80,13 @@ def get_single_user(user_input : schemas.UserId,
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not exist")
     else:
-        return user
+        return {
+            "status" : "200",
+            "data" : user
+        }
     
 
-@router.delete("/delete")
+@router.delete("/delete", status_code=status.HTTP_200_OK)
 def delete_user(user_input : schemas.UserId,
                 db: Session = Depends(get_db),
                 # current_user = Depends(oauth2.get_current_user_key)
@@ -94,4 +106,7 @@ def delete_user(user_input : schemas.UserId,
     user.delete(synchronize_session = False)
     db.commit()
 
-    return {"status" : "successfully deleted employee"}
+    return {
+         "status" : "200",
+         "message" : "successfully deleted employee"
+         }

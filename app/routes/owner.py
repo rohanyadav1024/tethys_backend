@@ -10,17 +10,20 @@ from ..config import settings
 router = APIRouter(prefix='/owner', tags=["Owner"])
 
 @router.get("/",
-            response_model=List[schemas.OwnerOut],
+            response_model=schemas.OwnerDataList ,
             status_code=status.HTTP_200_OK)
 def get_owners_list(db: Session = Depends(get_db)):
 
     own_query = db.query(models.Owners).all()
-    return own_query
+    return {
+            "status" : "200",
+            "data" : own_query
+        }
 
 
 @router.post("/create", 
-             response_model=schemas.OwnerOut,
-             status_code=status.HTTP_201_CREATED)
+             response_model=schemas.OwnerData,
+             status_code=status.HTTP_200_OK)
 def create_employee(own:schemas.CreateOwner ,db: Session = Depends(get_db)):
     own_query = db.query(models.Owners).filter(models.Owners.email == own.email).first()
 
@@ -44,12 +47,17 @@ def create_employee(own:schemas.CreateOwner ,db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_own)
 
-    return db_own
+    return {
+            "status" : "200",
+            "data" : db_own
+        }
 
 
 
 
-@router.get("/user", response_model=schemas.OwnerOut, status_code=status.HTTP_302_FOUND)
+@router.post("/user",
+            response_model=schemas.OwnerData,
+             status_code=status.HTTP_200_OK)
 def get_single_user(user_input : schemas.UserId,
                     db: Session = Depends(get_db),
                     # current_owner : models.Owners = Depends(oauth2.get_current_user_key)
@@ -66,7 +74,10 @@ def get_single_user(user_input : schemas.UserId,
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not found")
     else:
-        return user
+        return {
+            "status" : "200",
+            "data" : user
+        }
     
 
 @router.delete("/delete")
@@ -89,4 +100,7 @@ def delete_user(keydata: schemas.SecretKey,
     user.delete(synchronize_session = False)
     db.commit()
 
-    return {"status" : "successfully deleted owner"}
+    return {
+        "status" : "200",
+        "message" : "successfully deleted owner"
+        }

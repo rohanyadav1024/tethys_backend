@@ -9,7 +9,7 @@ from ..database import get_db
 router = APIRouter(prefix='/requests', tags=["Request"])
 
 @router.get("/",
-            response_model=List[schemas.RequestsOut],
+            # response_model=schemas.RequestsData,
             status_code=status.HTTP_200_OK)
 def get_owners_list(db: Session = Depends(get_db)):
 
@@ -30,7 +30,10 @@ def get_owners_list(db: Session = Depends(get_db)):
         }
         for req, emp in req_query
     ]
-    return request
+    return {
+        "status" : "200",
+        "data" : request
+    }
 
 
 @router.post("/permit",
