@@ -35,6 +35,9 @@ def send_otp(username: schemas.EmailData):
             server.login(smtp_username, smtp_password)
             server.sendmail(msg["From"], [msg["To"]], msg.as_string())
         
-        return {"otp": otp}
+        return {
+            "status" : "200",
+            "otp": otp
+            }
     except Exception as e:
         return {"error": str(e)}
