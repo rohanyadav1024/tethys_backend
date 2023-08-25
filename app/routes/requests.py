@@ -62,3 +62,21 @@ def grant_permission(
     db.refresh(emp)
 
     return emp
+
+@router.delete("/delete", status_code=status.HTTP_200_OK)
+def delete_request(
+        req: schemas.Requests,
+        db: Session = Depends(get_db),
+                ):
+    request = db.query(models.Emp_requests).filter(models.Emp_requests.req_id == req.req_id)
+    if request.first() == None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"User with request id {req.req_id} not found")
+
+
+    request.delete(synchronize_session = False)
+    db.commit()
+
+    return {
+         "status" : "200",
+         "message" : "successfully deleted employee data"
+         }
