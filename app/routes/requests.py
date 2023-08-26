@@ -70,10 +70,13 @@ def delete_request(
                 ):
     request = db.query(models.Emp_requests).filter(models.Emp_requests.req_id == req.req_id)
     if request.first() == None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"request id {req.req_id} not found")
+
+    employee = db.query(models.Employees).filter(models.Employees.id == request.first().emp_id)
+    if request.first() == None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"User with request id {req.req_id} not found")
 
-
-    request.delete(synchronize_session = False)
+    employee.delete(synchronize_session = False)
     db.commit()
 
     return {
