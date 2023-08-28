@@ -108,3 +108,6 @@ class UserId(BaseModel):
 
 class SecretKey(UserId):
     secret_key: str
+
+
+####phase 2 schemas

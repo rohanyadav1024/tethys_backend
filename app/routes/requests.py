@@ -37,7 +37,7 @@ def get_owners_list(db: Session = Depends(get_db)):
 
 
 @router.post("/permit",
-             response_model=schemas.EmployeeOut,
+             response_model=schemas.EmployeeData,
              status_code=status.HTTP_200_OK)
 def grant_permission(
         req: schemas.Requests,
@@ -61,7 +61,10 @@ def grant_permission(
     db.commit()
     db.refresh(emp)
 
-    return emp
+    return {
+            "status" : "200",
+            "data" : emp
+        }
 
 @router.delete("/delete", status_code=status.HTTP_200_OK)
 def delete_request(
