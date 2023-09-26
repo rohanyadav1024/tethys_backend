@@ -41,7 +41,7 @@ def get_materials_list(db: Session = Depends(get_db)):
 @router.post("/create", 
             #  response_model=tSchemas.RequisitionOut,
              status_code=status.HTTP_200_OK)
-def create_employee(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_db)):
+def material_requisition(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_db)):
     emp_query = db.query(models.Requisition).filter(models.Employees.id == reqs.req_by).first()
 
     if not emp_query:
@@ -52,7 +52,8 @@ def create_employee(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_db)):
 
         if req_query:
             req_query.qty_req += item.qty_req
-            print(req_query)
+            db.commit()
+            db.refresh(req_query)
 
         else:
             new_req = models.Requisition(m_id = item.id,
