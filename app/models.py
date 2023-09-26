@@ -47,49 +47,72 @@ class Emp_requests(Base):
     __allow_unmapped__ = True
 
 
-# # phase 2 here
+
+
+
+
+
+
+
+# phase 2 here
+class Material(Base):
+    __tablename__ = "materials"
+
+    id = Column(Integer, primary_key=True,
+                      nullable=False, autoincrement=True)
+    material = Column(String(255), nullable=False)
+    umo = Column(String(255), nullable=True)
+    g_no = Column(Integer, nullable=False)
+    __allow_unmapped__ = True
+
+
 # class MaterialIssued(Base):
 #     __tablename__ = "mat_issued"
 
 #     issue_id = Column(Integer, primary_key=True,
 #                       nullable=False, autoincrement=True)
-#     material = Column(String(255), nullable=False)
+#     m_id = Column(Integer, ForeignKey("materials.id"))
 #     qty_issued = Column(Integer, nullable=False)
 #     remarks = Column(String(255), nullable=True)
 #     issued_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
 #     issue_time = Column(TIMESTAMP(timezone=True),
 #                         nullable=False, server_default=text('now()'))
+
+#     material = relationship("Material", back_populates="mat_issued")
 #     __allow_unmapped__ = True
 
 
-# class Requisition(Base):
-#     __tablename__ = "requisition"
+class Requisition(Base):
+    __tablename__ = "requisition"
 
-#     req_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     material = Column(String(255), nullable=False)
-#     qty_req = Column(Integer, nullable=False,)
-#     remarks = Column(String(255), nullable=True)
-#     issue_details = Column(Integer, ForeignKey(
-#         "mat_issued.issue_id"), nullable=True)
-#     req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     req_time = Column(TIMESTAMP(timezone=True),
-#                       nullable=False, server_default=text('now()'))
-#     __allow_unmapped__ = True
+    req_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    qty_req = Column(Integer, nullable=False,)
+    remarks = Column(String(255), nullable=True)
+    # issue_details = Column(Integer, ForeignKey(
+    #     "mat_issued.issue_id"), nullable=True)
+    req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    req_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    # material = relationship("Material", back_populates="requisition")
+    # mat_issued = relationship("MaterialIssued", back_populates="requisition")
+    __allow_unmapped__ = True
 
 
-# class MaterialReturn(Base):
-#     __tablename__ = "mat_return"
+class MaterialReturn(Base):
+    __tablename__ = "mat_return"
 
-#     ret_id = Column(Integer, primary_key=True,
-#                        nullable=False, autoincrement=True)
-#     material = Column(String(255), nullable=False)
-#     qty_ret = Column(Integer, nullable=False,)
-#     remarks = Column(String(255), nullable=True)
-#     ret_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     ret_time = Column(TIMESTAMP(timezone=True),
-#                       nullable=False, server_default=text('now()'))
-#     __allow_unmapped__ = True
+    ret_id = Column(Integer, primary_key=True,
+                       nullable=False, autoincrement=True)
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    qty_ret = Column(Integer, nullable=False,)
+    remarks = Column(String(255), nullable=True)
+    ret_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    ret_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    # material = relationship("Material", back_populates="mat_return")
+    __allow_unmapped__ = True
 
 
 # class Prod_Handover(Base):
@@ -130,7 +153,7 @@ class Emp_requests(Base):
 
 #     ord_id = Column(Integer, primary_key=True,
 #                     nullable=False, autoincrement=True)
-#     material = Column(String(255), nullable=False)
+#     m_id = Column(Integer, ForeignKey("materials.id"))
 #     ord_qty = Column(Integer, nullable=False)
 #     recieved_qty = Column(Integer, nullable=True)
 #     remarks = Column(String(255), nullable=True)
@@ -163,7 +186,8 @@ class Emp_requests(Base):
 
 
 # # main tales for records
-# class Materials(Base):
+# #for stock manageryy
+# class RawMaterials(Base):
 #     __tablename__ = "raw_mat"
 
 #     mat_id = Column(Integer, primary_key=True,

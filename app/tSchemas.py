@@ -1,17 +1,31 @@
-# from pydantic import BaseModel, EmailStr
-# from typing import Optional, List
-# from datetime import datetime
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import datetime
 
-# class Requisition(BaseModel):
-#     material : str
-#     qty_req : int
-#     remarks : Optional[str] = None
-#     req_by : Optional[int] = None
+from . import schemas
 
-# class RequisitionOut(Requisition):
-#     req_id : int
-#     req_time : datetime
-#     issue_details : Optional[int] = None
+
+class Material(BaseModel):
+    id : int
+    material : str
+    umo : str
+    g_no : int
+
+class MaterialListOut(BaseModel):
+    status: str
+    data : List[Material]
+    
+
+class Requisition(BaseModel):
+    materials : List[Material]
+    remarks : Optional[str] = None
+    req_by : int = None
+
+class RequisitionOut(Requisition):
+    status : str
+    req_id : int
+    req_time : datetime
+    issue_details : Optional[int] = None
 
 
 # class Issued(BaseModel):

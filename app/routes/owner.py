@@ -24,7 +24,7 @@ def get_owners_list(db: Session = Depends(get_db)):
 @router.post("/create", 
              response_model=schemas.OwnerData,
              status_code=status.HTTP_200_OK)
-def create_employee(own:schemas.CreateOwner ,db: Session = Depends(get_db)):
+def create_owner(own:schemas.CreateOwner ,db: Session = Depends(get_db)):
     own_query = db.query(models.Owners).filter(models.Owners.email == own.email).first()
 
     if own_query:
@@ -58,7 +58,7 @@ def create_employee(own:schemas.CreateOwner ,db: Session = Depends(get_db)):
 @router.post("/user",
             response_model=schemas.OwnerData,
              status_code=status.HTTP_200_OK)
-def get_single_user(user_input : schemas.UserId,
+def get_single_owner(user_input : schemas.UserId,
                     db: Session = Depends(get_db),
                     # current_owner : models.Owners = Depends(oauth2.get_current_user_key)
                     ):
@@ -81,7 +81,7 @@ def get_single_user(user_input : schemas.UserId,
     
 
 @router.delete("/delete")
-def delete_user(keydata: schemas.SecretKey,
+def delete_owner(keydata: schemas.SecretKey,
                 db: Session = Depends(get_db),
                 # current_owner : models.Owners = Depends(oauth2.get_current_user_key)
                 ):

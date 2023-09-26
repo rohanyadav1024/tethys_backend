@@ -1,14 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# import pandas as pd
+
 from .database import engine
 from . import models
-from .routes import auth, employees, owner, otp, requests
+from .routes import auth, employees, owner, otp, requests, prod_man
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# file = 'file.xlsx'
+# df = pd.read_excel(file)
+
+# df.to_sql('materials', con=engine, if_exists='replace', index=False)
 origins = ["*"]
 
 app.add_middleware(
@@ -29,5 +35,6 @@ app.include_router(auth.router)
 app.include_router(otp.router)
 app.include_router(requests.router)
 
+app.include_router(prod_man.router)
 
 

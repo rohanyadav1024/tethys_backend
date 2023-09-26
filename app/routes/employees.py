@@ -63,7 +63,7 @@ def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
 @router.post("/user",
              response_model=schemas.EmployeeData,
                status_code=status.HTTP_200_OK)
-def get_single_user(user_input : schemas.UserId,
+def get_single_employee(user_input : schemas.UserId,
                     db: Session = Depends(get_db),
                     # current_user = Depends(oauth2.get_current_user_key)
                     ):
@@ -87,7 +87,7 @@ def get_single_user(user_input : schemas.UserId,
     
 
 @router.delete("/delete", status_code=status.HTTP_200_OK)
-def delete_user(user_input : schemas.UserId,
+def delete_employee(user_input : schemas.UserId,
                 db: Session = Depends(get_db),
                 # current_user = Depends(oauth2.get_current_user_key)
                 ):
