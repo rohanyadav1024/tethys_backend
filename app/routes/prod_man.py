@@ -38,35 +38,59 @@ def get_materials_list(db: Session = Depends(get_db)):
         }
 
 
-# @router.post("/create", 
-#              response_model=schemas.EmployeeData,
-#              status_code=status.HTTP_200_OK)
-# def create_employee(emp:schemas.CreateEmployee ,db: Session = Depends(get_db)):
-#     emp_query = db.query(models.Employees).filter(models.Employees.email == emp.email).first()
+@router.post("/create", 
+            #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def create_employee(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_db)):
+    emp_query = db.query(models.Requisition).filter(models.Employees.id == reqs.req_by).first()
 
-#     if emp_query:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+    if not emp_query:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot send request")
+
+    for item in reqs.items:
+        req_query = db.query(models.Requisition).filter(models.Requisition.m_id == item.id).first()
+
+        if req_query:
+            req_query.qty_req += item.qty_req
+            print(req_query)
+
+        else:
+            new_req = models.Requisition(m_id = item.id,
+                                         qty_req = item.qty_req,
+                                         remarks = item.remarks,
+                                         req_by = reqs.req_by)
+
+            db.add(new_req)
+            db.commit()
+            db.refresh(new_req)
+
+    requisitions = db.query(models.Requisition).all()
+    return {
+        'status' :"200",
+        'data' : requisitions
+    }
+
+
+    # emp_query = db.query(models.Requisition).filter(models.Employees.email == emp.email).first()
+
+    # if emp_query:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
     
-#     if emp.phone:
-#         emp_with_num = db.query(models.Employees).filter(models.Employees.phone == emp.phone).first()
-#         if emp_with_num:
-#             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone number already exists")
+    # if emp.phone:
+    #     emp_with_num = db.query(models.Employees).filter(models.Employees.phone == emp.phone).first()
+    #     if emp_with_num:
+    #         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone number already exists")
 
+    # db.add(db_emp)
+    # db.commit()
+    # db.refresh(db_emp)
+    # # employee = db_emp
+    # db_request = models.Emp_requests(emp_id = db_emp.id)
+    # db.add(db_request)
+    # db.commit()
+    # db.refresh(db_emp)
 
-#     new_emp = emp.model_dump(exclude={"password"})
-#     hashed_pass = utils.hash(emp.password)
-#     db_emp = models.Employees(**new_emp,
-#                           password = hashed_pass)
-#     db.add(db_emp)
-#     db.commit()
-#     db.refresh(db_emp)
-#     # employee = db_emp
-#     db_request = models.Emp_requests(emp_id = db_emp.id)
-#     db.add(db_request)
-#     db.commit()
-#     db.refresh(db_emp)
-
-#     return {
-#             "status" : "200",
-#             "data" : db_emp
-#         }
+    # return {
+    #         "status" : "200",
+    #         "data" : db_emp
+    #     }
