@@ -11,7 +11,7 @@ router = APIRouter(prefix='/requests', tags=["Request"])
 @router.get("/",
             # response_model=schemas.RequestsData,
             status_code=status.HTTP_200_OK)
-def get_owners_list(db: Session = Depends(get_db)):
+def get_employee_requests(db: Session = Depends(get_db)):
 
     req_query = db.query(models.Emp_requests, models.Employees).join(models.Employees, models.Employees.id == models.Emp_requests.emp_id, isouter=True).all()
 

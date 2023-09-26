@@ -111,3 +111,17 @@ class SecretKey(UserId):
 
 
 ####phase 2 schemas
+# class Material(BaseModel):
+#     m_id : int
+#     qty_req : int
+    
+
+# class Requisition(BaseModel):
+#     materials : List[Material]
+#     remarks : Optional[str] = None
+#     req_by : int = None
+
+# class RequisitionOut(Requisition):
+#     req_id : int
+#     req_time : datetime
+#     issue_details : Optional[int] = None
