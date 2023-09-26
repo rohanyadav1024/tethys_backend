@@ -23,16 +23,16 @@ class ReqMat(BaseModel):
 
 class RequisitionIn(BaseModel):
     items : List[ReqMat]
-    req_by : int = None
+    req_by : int
 
 class Requisition(RequisitionIn):
     req_id : int
     req_time : datetime
-    issue_details : Optional[int] = None
+    # issue_details : Optional[int] = None
 
-class RequisitionOut(Requisition):
+class RequisitionOut(BaseModel):
     status: str
-    data : Requisition
+    data : List[Requisition]
 
 
 # class Issued(BaseModel):
