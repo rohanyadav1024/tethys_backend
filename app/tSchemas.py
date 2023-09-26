@@ -16,16 +16,23 @@ class MaterialListOut(BaseModel):
     data : List[Material]
     
 
-class Requisition(BaseModel):
-    materials : List[Material]
-    remarks : Optional[str] = None
+class ReqMat(BaseModel):
+    id : int
+    qty_req : int
+    remarks: Optional[str] = None
+
+class RequisitionIn(BaseModel):
+    items : List[ReqMat]
     req_by : int = None
 
-class RequisitionOut(Requisition):
-    status : str
+class Requisition(RequisitionIn):
     req_id : int
     req_time : datetime
     issue_details : Optional[int] = None
+
+class RequisitionOut(Requisition):
+    status: str
+    data : Requisition
 
 
 # class Issued(BaseModel):
