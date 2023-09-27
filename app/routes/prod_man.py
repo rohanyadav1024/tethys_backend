@@ -42,7 +42,7 @@ def get_materials_list(db: Session = Depends(get_db)):
             #  response_model=tSchemas.RequisitionOut,
              status_code=status.HTTP_200_OK)
 def material_requisition(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_db)):
-    emp_query = db.query(models.Requisition).filter(models.Employees.id == reqs.req_by).first()
+    emp_query = db.query(models.Employees).filter(models.Employees.id == reqs.req_by).first()
 
     if not emp_query:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot send request")
