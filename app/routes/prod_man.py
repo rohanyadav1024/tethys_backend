@@ -71,27 +71,3 @@ def material_requisition(reqs:tSchemas.RequisitionIn ,db: Session = Depends(get_
         'data' : requisitions
     }
 
-
-    # emp_query = db.query(models.Requisition).filter(models.Employees.email == emp.email).first()
-
-    # if emp_query:
-    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
-    
-    # if emp.phone:
-    #     emp_with_num = db.query(models.Employees).filter(models.Employees.phone == emp.phone).first()
-    #     if emp_with_num:
-    #         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone number already exists")
-
-    # db.add(db_emp)
-    # db.commit()
-    # db.refresh(db_emp)
-    # # employee = db_emp
-    # db_request = models.Emp_requests(emp_id = db_emp.id)
-    # db.add(db_request)
-    # db.commit()
-    # db.refresh(db_emp)
-
-    # return {
-    #         "status" : "200",
-    #         "data" : db_emp
-    #     }
