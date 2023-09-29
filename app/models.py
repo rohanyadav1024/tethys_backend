@@ -65,6 +65,8 @@ class Material(Base):
     g_no = Column(Integer, nullable=False)
     __allow_unmapped__ = True
 
+    requisition = relationship("Requisition", back_populates="materials")
+
 
 # class MaterialIssued(Base):
 #     __tablename__ = "mat_issued"
@@ -81,22 +83,36 @@ class Material(Base):
 #     material = relationship("Material", back_populates="mat_issued")
 #     __allow_unmapped__ = True
 
+class Slot(Base):
+    __tablename__ = 'slots'
+
+    slot_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    remarks = Column(String(255), nullable=True)
+    req_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    issue_status = Column(Integer, nullable=False, default=0)
+
+    requisition = relationship("Requisition", back_populates="slots")
+
+    __allow_unmapped__ = True
 
 class Requisition(Base):
     __tablename__ = "requisition"
 
     req_id = Column(Integer, primary_key=True,
                     nullable=False, autoincrement=True)
+    slot_id = Column(Integer,ForeignKey("slots.slot_id"), nullable=False)
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_req = Column(Integer, nullable=False,)
-    remarks = Column(String(255), nullable=True)
-    # issue_details = Column(Integer, ForeignKey(
-    #     "mat_issued.issue_id"), nullable=True)
-    req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-    req_time = Column(TIMESTAMP(timezone=True),
-                      nullable=False, server_default=text('now()'))
-    # material = relationship("Material", back_populates="requisition")
-    # mat_issued = relationship("MaterialIssued", back_populates="requisition")
+
+    issue_qty = Column(Integer, nullable=False, default=0)
+    issued_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+
+    materials = relationship("Material", back_populates="requisition")
+    slots = relationship("Slot", back_populates="requisition")
+
     __allow_unmapped__ = True
 
 
