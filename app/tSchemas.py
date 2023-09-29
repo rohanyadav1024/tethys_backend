@@ -4,12 +4,16 @@ from datetime import datetime
 
 from . import schemas
 
-
-class Material(BaseModel):
+class MaterialId(BaseModel):
     id : int
+
+class MaterialIn(BaseModel):
     material : str
     umo : str
     g_no : int
+
+class Material(MaterialIn):
+    id : int
 
 class MaterialListOut(BaseModel):
     status: str
@@ -18,12 +22,12 @@ class MaterialListOut(BaseModel):
 
 class ReqMat(BaseModel):
     id : int
-    qty_req : int
-    remarks: Optional[str] = None
+    qty : int
 
 class RequisitionIn(BaseModel):
     items : List[ReqMat]
     req_by : int
+    remarks: Optional[str] = None
 
 class Requisition(RequisitionIn):
     req_id : int
@@ -34,6 +38,15 @@ class RequisitionOut(BaseModel):
     status: str
     data : List[Requisition]
 
+
+class SlotData(BaseModel):
+    slot_id : int
+class IssueSlot(SlotData):
+    issue_by : int
+
+class IssueReq(BaseModel):
+    issue_materials : List[ReqMat]
+    issue_by: int
 
 # class Issued(BaseModel):
 #     material : str
