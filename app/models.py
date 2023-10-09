@@ -68,11 +68,33 @@ class Material(Base):
     requisition = relationship("Requisition", back_populates="materials")
 
 
+
+
+
+
+
+
+
+# phase 2 here
+class Material(Base):
+    __tablename__ = "materials"
+
+    id = Column(Integer, primary_key=True,
+                      nullable=False, autoincrement=True)
+    material = Column(String(255), nullable=False)
+    umo = Column(String(255), nullable=True)
+    g_no = Column(Integer, nullable=False)
+    __allow_unmapped__ = True
+
+    requisition = relationship("Requisition", back_populates="materials")
+
+
 # class MaterialIssued(Base):
 #     __tablename__ = "mat_issued"
 
 #     issue_id = Column(Integer, primary_key=True,
 #                       nullable=False, autoincrement=True)
+#     m_id = Column(Integer, ForeignKey("materials.id"))
 #     m_id = Column(Integer, ForeignKey("materials.id"))
 #     qty_issued = Column(Integer, nullable=False)
 #     remarks = Column(String(255), nullable=True)
@@ -92,7 +114,10 @@ class Slot(Base):
     req_time = Column(TIMESTAMP(timezone=True),
                       nullable=False, server_default=text('now()'))
     req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-    issue_status = Column(Integer, nullable=False, default=0)
+    # issued_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    # issue_time = Column(TIMESTAMP(timezone=True),
+    #                   nullable=True)
+    issue_status = Column(Boolean, nullable=False, default=False)
 
     requisition = relationship("Requisition", back_populates="slots")
 
@@ -119,16 +144,16 @@ class Requisition(Base):
 class MaterialReturn(Base):
     __tablename__ = "mat_return"
 
-    ret_id = Column(Integer, primary_key=True,
-                       nullable=False, autoincrement=True)
-    m_id = Column(Integer, ForeignKey("materials.id"))
-    qty_ret = Column(Integer, nullable=False,)
-    remarks = Column(String(255), nullable=True)
-    ret_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-    ret_time = Column(TIMESTAMP(timezone=True),
-                      nullable=False, server_default=text('now()'))
-    # material = relationship("Material", back_populates="mat_return")
-    __allow_unmapped__ = True
+#     ret_id = Column(Integer, primary_key=True,
+#                        nullable=False, autoincrement=True)
+#     m_id = Column(Integer, ForeignKey("materials.id"))
+#     qty_ret = Column(Integer, nullable=False,)
+#     remarks = Column(String(255), nullable=True)
+#     ret_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+#     ret_time = Column(TIMESTAMP(timezone=True),
+#                       nullable=False, server_default=text('now()'))
+#     material = relationship("Material", back_populates="mat_return")
+#     __allow_unmapped__ = True
 
 
 # class Prod_Handover(Base):
@@ -170,6 +195,7 @@ class MaterialReturn(Base):
 #     ord_id = Column(Integer, primary_key=True,
 #                     nullable=False, autoincrement=True)
 #     m_id = Column(Integer, ForeignKey("materials.id"))
+#     m_id = Column(Integer, ForeignKey("materials.id"))
 #     ord_qty = Column(Integer, nullable=False)
 #     recieved_qty = Column(Integer, nullable=True)
 #     remarks = Column(String(255), nullable=True)
@@ -202,6 +228,8 @@ class MaterialReturn(Base):
 
 
 # # main tales for records
+# #for stock manageryy
+# class RawMaterials(Base):
 # #for stock manageryy
 # class RawMaterials(Base):
 #     __tablename__ = "raw_mat"
