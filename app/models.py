@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Boolean, Integer, String, TIMESTAMP, ForeignKey, text
+from sqlalchemy import Column, Boolean, Integer, String, TIMESTAMP, ForeignKey, text, Double
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -69,6 +69,8 @@ class Material(Base):
 
     requisition = relationship("Requisition", back_populates="materials")
     mat_return = relationship("MaterialReturn", back_populates="materials")
+    orders = relationship("Orders", back_populates="materials")
+
 
 
 class Slot(Base):
@@ -96,7 +98,7 @@ class Requisition(Base):
                     nullable=False, autoincrement=True)
     slot_id = Column(Integer,ForeignKey("slots.slot_id"), nullable=False)
     m_id = Column(Integer, ForeignKey("materials.id"))
-    qty_req = Column(Integer, nullable=False,)
+    qty_req = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="requisition")
     slots = relationship("Slot", back_populates="requisition")
@@ -130,7 +132,7 @@ class MaterialReturn(Base):
                        nullable=False, autoincrement=True)
     slot_id = Column(Integer,ForeignKey("r_slots.slot_id"), nullable=False)
     m_id = Column(Integer, ForeignKey("materials.id"))
-    qty_ret = Column(Integer, nullable=False,)
+    qty_ret = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="mat_return")
     r_slots = relationship("ReturnSlot", back_populates="mat_return")
@@ -171,41 +173,49 @@ class MaterialReturn(Base):
 #     __allow_unmapped__ = True
 
 
-# # gate keeper tables: accesed by gatekeeper
-# class Purchases(Base):
-#     __tablename__ = "pur_details"
+# gate keeper tables: accesed by gatekeeper
+class Purchases(Base):
+    __tablename__ = "purchases"
 
-#     pur_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     supp = Column(String(255), nullable=True)
-#     material = Column(String(255), nullable=False)
-#     amount = Column(Integer, nullable=False)
-#     invoice = Column(String(255), nullable=False)
-#     vehicle = Column(String(255), nullable=False)
-#     pur_time = Column(TIMESTAMP(timezone=True),
-#                       nullable=False, server_default=text('now()'))
+    pur_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    supp_name = Column(String(255), nullable=True)
+    t_amount = Column(Double, nullable=False)
+    invoice = Column(String(50), nullable=False)
+    vehicle = Column(String(50), nullable=False)
+    pur_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    
+    remarks = Column(String(255), nullable=True)
+    pur_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    exp_date = Column(TIMESTAMP(timezone=True),
+                       nullable=True,)
+    recv_time = Column(TIMESTAMP(timezone=True),
+                       nullable=True,)
+    recieved = Column(Boolean, nullable=False, server_default="false")
+    
+    orders = relationship("Orders", back_populates="purchases")
 
-#     __allow_unmapped__ = True
+    __allow_unmapped__ = True
 
 
-# class Orders(Base):
-#     __tablename__ = "orders"
+class Orders(Base):
+    __tablename__ = "orders"
 
-#     ord_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     m_id = Column(Integer, ForeignKey("materials.id"))
-#     m_id = Column(Integer, ForeignKey("materials.id"))
-#     ord_qty = Column(Integer, nullable=False)
-#     recieved_qty = Column(Integer, nullable=True)
-#     remarks = Column(String(255), nullable=True)
-#     pur_id = Column(Integer, ForeignKey("pur_details.pur_id"), nullable=True)
-#     gk_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     exp_date = Column(TIMESTAMP(timezone=True),
-#                        nullable=True,)
-#     recv_time = Column(TIMESTAMP(timezone=True),
-#                        nullable=True,)
+    ord_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    ord_qty = Column(Integer, nullable=False)
+    recieved_qty = Column(Integer, nullable=False, server_default="0")
 
-#     __allow_unmapped__ = True
+    pur_id = Column(Integer, ForeignKey("purchases.pur_id"), nullable=True)
+
+    materials = relationship("Material", back_populates="orders")
+    purchases = relationship("Purchases", back_populates="orders")
+
+    __allow_unmapped__ = True
+
 
 
 # class Consignments(Base):

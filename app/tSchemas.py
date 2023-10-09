@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
+from sqlalchemy import Double
+
 from . import schemas
 
 class MaterialId(BaseModel):
@@ -83,25 +85,27 @@ class IssueReq(BaseModel):
 #     recieved_by : Optional[int] = None
 #     mfg : datetime
 
+class Orders(BaseModel):
+    m_id : int
+    ord_qty : int
 
-# class Purchases(BaseModel):
-#     supp : str
-#     material : str
-#     amount : int
-#     invoice : str
-#     vehicle : str
+class Purchases(BaseModel):
+    supp_name : str
+    t_amount : float
+    invoice : str
+    vehicle : str
+    remarks : Optional[str] = None
+    exp_date : Optional[datetime] = None
+    pur_by : int
+    orders : List[Orders]
 
 # class PurchasesOut(Purchases):
 #     pur_id : int
 #     pur_time : datetime
 
 
-# class Orders(BaseModel):
-#     product : str
-#     ord_qty : int
-#     recieved_qty : Optional[int] = 0
-#     remarks : Optional[str] = None
-#     exp_date : Optional[datetime] = None
+
+    
 
 # class OrdersOut(Orders):
 #     ord_id : int
