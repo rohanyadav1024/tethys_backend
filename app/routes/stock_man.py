@@ -13,14 +13,14 @@ router = APIRouter(prefix='/smanager', tags=["Stock Manager"])
 @router.get("/reqs",
             #  response_model=tSchemas.RequisitionOut,
             status_code=status.HTTP_200_OK)
-def get_requisition_requests(db: Session = Depends(get_db)):
+def get_all_requisition(db: Session = Depends(get_db)):
 
     slot_data_query = db.query(models.Slot, models.Employees).join(
         models.Employees, models.Employees.id == models.Slot.req_by).all()
 
     return {
         'status': "200",
-        'msg': "successfully posted requisition requests",
+        'msg': "successfully fetched requisition requests",
         'data': [{
             'slot_id': slot_data[0].slot_id,
             'req_time': slot_data[0].req_time,
@@ -49,7 +49,7 @@ def get_requisition_requests(db: Session = Depends(get_db)):
 
 # to get requisition by slot id: prod manager will see a slot data
 @router.post('/reqs/slot')
-def get_single_slot_data(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
 
     slot_data = db.query(models.Slot).filter(
         models.Slot.slot_id == slot.slot_id).first()
@@ -108,7 +108,7 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
     if slot_query.issue_status :
         return {
             'status': "400",
-            'msg': "this slot has been issued",
+            'msg': "this slot has been already issued",
         }
 
     slot_query.issue_status = True
@@ -191,3 +191,85 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
 #             ]
 #         }
 #     }
+
+@router.get("/return/reqs",
+            #  response_model=tSchemas.RequisitionOut,
+            status_code=status.HTTP_200_OK)
+def get_all_return_request(db: Session = Depends(get_db)):
+
+    slot_data_query = db.query(models.ReturnSlot, models.Employees).join(
+        models.Employees, models.Employees.id == models.ReturnSlot.ret_by).all()
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched return requests",
+        'data': [{
+            'slot_id': slot_data[0].slot_id,
+            'ret_time': slot_data[0].ret_time,
+            'remarks': slot_data[0].remarks,
+            'approved': slot_data[0].approved,
+            'ret_by': {
+                "id": slot_data[1].id,
+                "name": slot_data[1].name,
+                "email": slot_data[1].email,
+                "role": slot_data[1].role,
+                "phone": slot_data[1].phone,
+                "created_at": slot_data[1].created_at,
+                "is_active": slot_data[1].is_active,
+            },
+
+
+            'materials_return': [
+                {
+                    'ret_id': req.ret_id,
+                    'qty_ret': req.qty_ret,
+                    'mat_details': req.materials,
+                } for req in slot_data[0].mat_return
+            ]
+        } for slot_data in slot_data_query
+        ]
+    }
+
+
+@router.post('/return/reqs/slot')
+def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+
+    slot_data = db.query(models.ReturnSlot).filter(
+        models.ReturnSlot.slot_id == slot.slot_id).first()
+    if not slot_data:
+        return {
+            'status': "400",
+            'msg': "slot not available",
+        }
+
+    reqs_data = db.query(models.MaterialReturn).filter(models.MaterialReturn.slot_id == slot.slot_id).all()
+    emp = db.query(models.Employees).filter(models.Employees.id == slot_data.ret_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched requisition",
+        'data': {
+            'slot_id': slot_data.slot_id,
+            'ret_time': slot_data.ret_time,
+            'remarks': slot_data.remarks,
+            'approved': slot_data.approved,
+
+            'ret_by': {
+                "id": emp.id,
+                "name": emp.name,
+                "email": emp.email,
+                "role": emp.role,
+                "phone": emp.phone,
+                "created_at": emp.created_at,
+                "is_active": emp.is_active,
+            },
+
+            'requisitions': [
+                {
+                    'ret_id': req.ret_id,
+                    'qty_ret': req.qty_ret,
+                    'mat_details': req.materials,
+                } for req in reqs_data
+            ]
+        }
+    }
