@@ -38,7 +38,8 @@ class RequisitionOut(BaseModel):
     status: str
     data : List[Requisition]
 
-
+class ID(BaseModel):
+    id : int
 class SlotData(BaseModel):
     slot_id : int
 class IssueSlot(SlotData):

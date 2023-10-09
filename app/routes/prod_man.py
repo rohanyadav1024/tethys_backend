@@ -8,6 +8,61 @@ from ..database import get_db
 router = APIRouter(prefix='/pmanager', tags=["ProductionManager"])
 
 
+# to see requisition data req_by prod manager
+@router.post("/id",
+             status_code=status.HTTP_200_OK)
+def get_reqdata_prodmanag(emp: tSchemas.ID, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == emp.id).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee does not exist'
+        }
+
+    slot_data_query = db.query(models.Slot, models.Employees).filter(
+        models.Slot.req_by == emp.id).join(
+        models.Employees, models.Employees.id == models.Slot.req_by).all()
+    
+    if not slot_data_query:
+        return {
+            'status': "400",
+            'msg': 'employee has not requested anything'
+        }
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched requisition requests",
+        'data': [
+            {
+                'slot_id': slot_data[0].slot_id,
+                'req_time': slot_data[0].req_time,
+                'remarks': slot_data[0].remarks,
+                'req_by': {
+                    "id": slot_data[1].id,
+                    "name": slot_data[1].name,
+                    "email": slot_data[1].email,
+                    "role": slot_data[1].role,
+                    "phone": slot_data[1].phone,
+                    "created_at": slot_data[1].created_at,
+                    "is_active": slot_data[1].is_active,
+                },
+
+
+                'requisitions': [
+                    {
+                        'req_id': req.req_id,
+                        'qty_req': req.qty_req,
+                        'issue_qty': req.issue_qty,
+                        'issue_by': req.issued_by,
+                        'mat_details': req.materials,
+                    } for req in slot_data[0].requisition
+                ]
+            } for slot_data in slot_data_query
+        ]
+    }
+
 
 @router.post("/create",
              #  response_model=tSchemas.RequisitionOut,
@@ -28,7 +83,8 @@ def material_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get
     db.refresh(new_slot)
 
     for item in reqs.items:
-        new_req = models.Requisition(m_id=item.id, qty_req=item.qty, slot_id=new_slot.slot_id)
+        new_req = models.Requisition(
+            m_id=item.id, qty_req=item.qty, slot_id=new_slot.slot_id)
 
         db.add(new_req)
         db.commit()
@@ -39,12 +95,12 @@ def material_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get
 
     return {
         'status': "200",
-        'msg' : "successfully posted requisition requests",
+        'msg': "successfully posted requisition requests",
         'data': {
             'slot_id': slot_data[0].slot_id,
             'req_time': slot_data[0].req_time,
             'remarks': slot_data[0].remarks,
-            'issue_status' : slot_data[0].issue_status,
+            'issue_status': slot_data[0].issue_status,
             'req_by': {
                 "id": slot_data[1].id,
                 "name": slot_data[1].name,
@@ -54,12 +110,12 @@ def material_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get
                 "created_at": slot_data[1].created_at,
                 "is_active": slot_data[1].is_active,
             },
-                                 
-            
+
+
             'requisitions': [
                 {
-                    'req_id' : req.req_id,
-                    'qty_req' : req.qty_req,
+                    'req_id': req.req_id,
+                    'qty_req': req.qty_req,
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
             ]
