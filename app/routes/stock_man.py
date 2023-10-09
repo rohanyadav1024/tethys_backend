@@ -273,3 +273,71 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
             ]
         }
     }
+
+
+
+
+# post orders for gate keeper
+@router.post("/orders/create",
+             #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def create_purchase_orders(puchs: tSchemas.Purchases, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == puchs.pur_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot purchase'
+        }
+
+    purchase = puchs.model_dump(exclude={"orders"})
+    new_purchase = models.Purchases(**purchase)
+    db.add(new_purchase)
+    db.commit()
+    db.refresh(new_purchase)
+
+
+    for item in puchs.orders:
+        new_order = models.Orders(
+            m_id=item.m_id, ord_qty=item.ord_qty, pur_id=new_purchase.pur_id)
+
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
+
+    slot_data = db.query(models.Purchases, models.Employees).filter(models.Purchases.pur_id == new_purchase.pur_id).join(
+        models.Employees, models.Employees.id == models.Purchases.pur_by).first()
+    
+    return {
+        'status': "200",
+        'msg': "successfully posted material orders",
+        'data': {
+            'pur_id': slot_data[0].pur_id,
+            'pur_time': slot_data[0].pur_time,
+            'remarks': slot_data[0].remarks,
+            'recieved': slot_data[0].recieved,
+            'invoice': slot_data[0].invoice,
+            'vehicle': slot_data[0].vehicle,
+            'exp_date': slot_data[0].exp_date,
+
+            'pur_by': {
+                "id": slot_data[1].id,
+                "name": slot_data[1].name,
+                "email": slot_data[1].email,
+                "role": slot_data[1].role,
+                "phone": slot_data[1].phone,
+                "created_at": slot_data[1].created_at,
+                "is_active": slot_data[1].is_active,
+            },
+
+            'orders': [
+                {
+                    'order_id': ord.ord_id,
+                    'qty_req': ord.ord_qty,
+                    'mat_details': ord.materials,
+                } for ord in slot_data[0].orders
+            ]
+        }
+    }
+
