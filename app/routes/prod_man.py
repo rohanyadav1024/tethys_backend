@@ -11,7 +11,7 @@ router = APIRouter(prefix='/pmanager', tags=["ProductionManager"])
 # to see requisition data req_by prod manager
 @router.post("/id",
              status_code=status.HTTP_200_OK)
-def get_reqdata_prodmanager(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
+def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
 
     emp_query = db.query(models.Employees).filter(
         models.Employees.id == emp.emp_id).first()
@@ -67,7 +67,7 @@ def get_reqdata_prodmanager(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
 @router.post("/create",
              #  response_model=tSchemas.RequisitionOut,
              status_code=status.HTTP_200_OK)
-def material_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_db)):
+def create_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_db)):
     emp_query = db.query(models.Employees).filter(
         models.Employees.id == reqs.req_by).first()
 
@@ -118,6 +118,124 @@ def material_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get
                     'qty_req': req.qty_req,
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
+            ]
+        }
+    }
+
+
+
+# return materials
+@router.post("/return/id",
+             status_code=status.HTTP_200_OK)
+def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
+
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == emp.emp_id).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee does not exist'
+        }
+
+    slot_data_query = db.query(models.ReturnSlot).filter(
+        models.Slot.req_by == emp.emp_id).all()
+    
+    # join(models.Employees, models.Employees.id == models.ReturnSlot.approved_by, isouter=True).
+    
+    if not slot_data_query:
+        return {
+            'status': "400",
+            'msg': 'employee has not return anything'
+        }
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched return requests",
+        'data': [
+            {
+                'slot_id': slot_data.slot_id,
+            'ret_time': slot_data.ret_time,
+            'remarks': slot_data.remarks,
+            'approved': slot_data.approved,
+            # 'approved_by': {
+            #     "id": slot_data.id,
+            #     "name": slot_data.name,
+            #     "email": slot_data.email,
+            #     "role": slot_data.role,
+            #     "phone": slot_data.phone,
+            #     "created_at": slot_data.created_at,
+            #     "is_active": slot_data.is_active,
+            # },
+
+
+            'materials_return': [
+                {
+                    'ret_id': req.ret_id,
+                    'qty_ret': req.qty_ret,
+                    'mat_details': req.materials,
+                } for req in slot_data.mat_return
+            ]
+            } for slot_data in slot_data_query
+        ]
+    }
+
+
+
+@router.post("/return/create",
+             #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def create_return_request(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == reqs.req_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot send return request'
+        }
+
+    new_slot = models.ReturnSlot(remarks=reqs.remarks, ret_by=reqs.req_by)
+    db.add(new_slot)
+    db.commit()
+    db.refresh(new_slot)
+
+    for item in reqs.items:
+        new_return_req = models.MaterialReturn(
+            m_id=item.id, qty_ret=item.qty, slot_id=new_slot.slot_id)
+
+        db.add(new_return_req)
+        db.commit()
+        db.refresh(new_return_req)
+
+    slot_data = db.query(models.ReturnSlot, models.Employees).filter(models.ReturnSlot.slot_id == new_slot.slot_id).join(
+        models.Employees, models.Employees.id == models.ReturnSlot.ret_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully posted return request",
+        'data': {
+            'slot_id': slot_data[0].slot_id,
+            'ret_time': slot_data[0].ret_time,
+            'remarks': slot_data[0].remarks,
+            'recieved': slot_data[0].approved,
+            'ret_by': {
+                "id": slot_data[1].id,
+                "name": slot_data[1].name,
+                "email": slot_data[1].email,
+                "role": slot_data[1].role,
+                "phone": slot_data[1].phone,
+                "created_at": slot_data[1].created_at,
+                "is_active": slot_data[1].is_active,
+            },
+
+
+            'materials_return': [
+                {
+                    'ret_id': req.ret_id,
+                    'qty_ret': req.qty_ret,
+                    'mat_details': req.materials,
+                } for req in slot_data[0].mat_return
             ]
         }
     }
