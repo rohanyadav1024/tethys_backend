@@ -11,9 +11,10 @@ router = APIRouter(prefix='/pmanager', tags=["ProductionManager"])
 # to see requisition data req_by prod manager
 @router.post("/id",
              status_code=status.HTTP_200_OK)
-def get_reqdata_prodmanag(emp: tSchemas.ID, db: Session = Depends(get_db)):
+def get_reqdata_prodmanager(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
+
     emp_query = db.query(models.Employees).filter(
-        models.Employees.id == emp.id).first()
+        models.Employees.id == emp.emp_id).first()
 
     if not emp_query:
         return {
@@ -22,8 +23,8 @@ def get_reqdata_prodmanag(emp: tSchemas.ID, db: Session = Depends(get_db)):
         }
 
     slot_data_query = db.query(models.Slot, models.Employees).filter(
-        models.Slot.req_by == emp.id).join(
-        models.Employees, models.Employees.id == models.Slot.req_by).all()
+        models.Slot.req_by == emp.emp_id).join(
+        models.Employees, models.Employees.id == models.Slot.issued_by, isouter=True).all()
     
     if not slot_data_query:
         return {
@@ -39,7 +40,9 @@ def get_reqdata_prodmanag(emp: tSchemas.ID, db: Session = Depends(get_db)):
                 'slot_id': slot_data[0].slot_id,
                 'req_time': slot_data[0].req_time,
                 'remarks': slot_data[0].remarks,
-                'req_by': {
+
+                'issue_time': slot_data[0].issue_time,
+                'issue_by': {
                     "id": slot_data[1].id,
                     "name": slot_data[1].name,
                     "email": slot_data[1].email,
@@ -47,15 +50,12 @@ def get_reqdata_prodmanag(emp: tSchemas.ID, db: Session = Depends(get_db)):
                     "phone": slot_data[1].phone,
                     "created_at": slot_data[1].created_at,
                     "is_active": slot_data[1].is_active,
-                },
-
+                } if slot_data[0].issued_by is not None else None,
 
                 'requisitions': [
                     {
                         'req_id': req.req_id,
                         'qty_req': req.qty_req,
-                        'issue_qty': req.issue_qty,
-                        'issue_by': req.issued_by,
                         'mat_details': req.materials,
                     } for req in slot_data[0].requisition
                 ]
