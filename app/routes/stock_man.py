@@ -25,6 +25,7 @@ def get_all_requisition(db: Session = Depends(get_db)):
             'slot_id': slot_data[0].slot_id,
             'req_time': slot_data[0].req_time,
             'remarks': slot_data[0].remarks,
+            'issue_status': slot_data[0].issue_status,
             'req_by': {
                 "id": slot_data[1].id,
                 "name": slot_data[1].name,
