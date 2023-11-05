@@ -67,11 +67,18 @@ class Material(Base):
     g_no = Column(Integer, nullable=False)
     __allow_unmapped__ = True
 
+    raw_inventories = relationship("RawMaterialInventory", back_populates="materials")
     requisition = relationship("Requisition", back_populates="materials")
     mat_return = relationship("MaterialReturn", back_populates="materials")
     orders = relationship("Orders", back_populates="materials")
 
+class RawMaterialInventory(Base):
+    __tablename__ = "raw_inventories"
 
+    m_id = Column(Integer, ForeignKey("materials.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    materials = relationship("Material", back_populates="raw_inventories")
 
 class Slot(Base):
     __tablename__ = 'slots'

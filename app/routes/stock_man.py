@@ -10,6 +10,24 @@ from ..database import get_db
 router = APIRouter(prefix='/smanager', tags=["Stock Manager"])
 
 
+@router.get("/",
+            #  response_model=tSchemas.RequisitionOut,
+            status_code=status.HTTP_200_OK)
+def rawmaterials_inventory(db: Session = Depends(get_db)):
+    invent_query = db.query(models.RawMaterialInventory).all()
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched inventory data",
+        'data': [{
+            'material_id': invent_item.m_id,
+            'available_qty': invent_item.avail_qty, 
+            'mat_details': invent_item.materials
+            } for invent_item in invent_query
+        ]
+    }
+
+
 @router.get("/reqs",
             #  response_model=tSchemas.RequisitionOut,
             status_code=status.HTTP_200_OK)
@@ -60,8 +78,10 @@ def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_
             'msg': "slot not available",
         }
 
-    reqs_data = db.query(models.Requisition).filter(models.Requisition.slot_id == slot.slot_id).all()
-    emp = db.query(models.Employees).filter(models.Employees.id == slot_data.req_by).first()
+    reqs_data = db.query(models.Requisition).filter(
+        models.Requisition.slot_id == slot.slot_id).all()
+    emp = db.query(models.Employees).filter(
+        models.Employees.id == slot_data.req_by).first()
 
     return {
         'status': "200",
@@ -94,19 +114,19 @@ def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_
 
 
 @router.post("/reqs/issue/slot",
-            #  status_code=status.HTTP_200_OK
-            )
+             #  status_code=status.HTTP_200_OK
+             )
 def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
 
     slot_query = db.query(models.Slot).filter(
         models.Slot.slot_id == slot.slot_id).first()
 
-    if not slot_query :
+    if not slot_query:
         return {
             'status': "400",
             'msg': "no requests for this slot",
         }
-    if slot_query.issue_status :
+    if slot_query.issue_status:
         return {
             'status': "400",
             'msg': "this slot has been already issued",
@@ -115,7 +135,7 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
     slot_query.issue_status = True
     slot_query.issued_by = slot.issue_by
     slot_query.issue_time = datetime.now()
-    
+
     db.commit()
     db.refresh(slot_query)
 
@@ -243,8 +263,10 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
             'msg': "slot not available",
         }
 
-    reqs_data = db.query(models.MaterialReturn).filter(models.MaterialReturn.slot_id == slot.slot_id).all()
-    emp = db.query(models.Employees).filter(models.Employees.id == slot_data.ret_by).first()
+    reqs_data = db.query(models.MaterialReturn).filter(
+        models.MaterialReturn.slot_id == slot.slot_id).all()
+    emp = db.query(models.Employees).filter(
+        models.Employees.id == slot_data.ret_by).first()
 
     return {
         'status': "200",
@@ -276,8 +298,6 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
     }
 
 
-
-
 # post orders for gate keeper
 @router.post("/orders/create",
              #  response_model=tSchemas.RequisitionOut,
@@ -298,7 +318,6 @@ def create_purchase_orders(puchs: tSchemas.Purchases, db: Session = Depends(get_
     db.commit()
     db.refresh(new_purchase)
 
-
     for item in puchs.orders:
         new_order = models.Orders(
             m_id=item.m_id, ord_qty=item.ord_qty, pur_id=new_purchase.pur_id)
@@ -309,7 +328,7 @@ def create_purchase_orders(puchs: tSchemas.Purchases, db: Session = Depends(get_
 
     slot_data = db.query(models.Purchases, models.Employees).filter(models.Purchases.pur_id == new_purchase.pur_id).join(
         models.Employees, models.Employees.id == models.Purchases.pur_by).first()
-    
+
     return {
         'status': "200",
         'msg': "successfully posted material orders",
@@ -341,4 +360,3 @@ def create_purchase_orders(puchs: tSchemas.Purchases, db: Session = Depends(get_
             ]
         }
     }
-
