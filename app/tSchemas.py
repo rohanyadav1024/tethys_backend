@@ -103,6 +103,15 @@ class Purchases(BaseModel):
 #     pur_id : int
 #     pur_time : datetime
 
+class GateOrders(BaseModel):
+    order_id: int
+    qty_recieved: int
+
+class CheckOrders(BaseModel):
+    pur_id : int
+    recieved_by: int
+    orders: List[GateOrders]
+
 
 
     
