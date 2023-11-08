@@ -245,17 +245,6 @@ class Orders(Base):
 
 # # main tales for records
 # #for stock manageryy
-# class RawMaterials(Base):
-# #for stock manageryy
-# class RawMaterials(Base):
-#     __tablename__ = "raw_mat"
-
-#     mat_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     material = Column(String(255), nullable=False)
-#     qty = Column(Integer, nullable=False)
-#     pur_id = Column(Integer, ForeignKey("pur_details.pur_id"), nullable=True)
-#     __allow_unmapped__ = True
 
 
 # class Transports(Base):

@@ -132,6 +132,23 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
             'msg': "this slot has been already issued",
         }
 
+    for req in slot_query.requisition:
+        inventory = db.query(models.RawMaterialInventory).filter(
+            models.RawMaterialInventory.m_id == req.m_id).first()
+        if inventory is None or inventory.avail_qty < req.qty_req:
+            return {
+                'status': "200",
+                'msg': "insufficient quantity in stocks",
+                'data': {
+                    'qty_req': req.qty_req,
+                    'avail_qty': inventory.avail_qty if inventory else 0,
+                    'm_id': req.m_id,
+                    'mat_details' : req.materials
+                }
+            }
+        
+        inventory.avail_qty -= req.qty_req
+            
     slot_query.issue_status = True
     slot_query.issued_by = slot.issue_by
     slot_query.issue_time = datetime.now()
@@ -252,6 +269,45 @@ def get_all_return_request(db: Session = Depends(get_db)):
     }
 
 
+@router.post('/return/reqs/allow')
+def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+
+    slot_data = db.query(models.ReturnSlot).filter(
+        models.ReturnSlot.slot_id == slot.slot_id).first()
+    if not slot_data:
+        return {
+            'status': "400",
+            'msg': "slot not available",    
+        }
+    
+    if slot_data.approved:
+        return {
+            'status': "400",
+            'msg': "slot already approved",
+        }
+    
+    for ret_mat in slot_data.mat_return:
+        invent_item = db.query(models.RawMaterialInventory).filter(models.RawMaterialInventory.m_id == ret_mat.m_id).first()
+        if invent_item:
+            invent_item.avail_qty += ret_mat.qty_ret
+        else:
+            new_inv_item = models.RawMaterialInventory(m_id=ret_mat.m_id, avail_qty=ret_mat.qty_ret)
+            db.add(new_inv_item)
+        db.commit()
+
+    slot_data.approved = True
+    db.commit()
+
+    return {
+            'status': "200",
+            'msg': "material recieved",
+            'data' : {
+                'slot_id': slot.slot_id,
+                'approved' : slot_data.approved
+            }
+        }
+
+
 @router.post('/return/reqs/slot')
 def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
 
@@ -270,7 +326,7 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
 
     return {
         'status': "200",
-        'msg': "successfully fetched requisition",
+        'msg': "successfully fetched return requisition",
         'data': {
             'slot_id': slot_data.slot_id,
             'ret_time': slot_data.ret_time,
