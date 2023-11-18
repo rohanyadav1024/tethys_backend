@@ -37,7 +37,9 @@ app.include_router(requests.router)
 
 app.include_router(material.router)
 app.include_router(prod_man.router)
+app.include_router(prod_man.router2)
 app.include_router(stock_man.router)
+app.include_router(stock_man.router2)
 app.include_router(gatekeeper.router)
 
 

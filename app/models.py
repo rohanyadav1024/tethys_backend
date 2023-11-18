@@ -172,6 +172,7 @@ class Batches(Base):
                     nullable=False, autoincrement=True)
     remarks = Column(String(255), nullable=True)
     handover_by = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    is_recieved = Column(Boolean, nullable=False, default=False)
     recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
     recieved_time = Column(TIMESTAMP(timezone=True),
                       nullable=True)
@@ -185,12 +186,11 @@ class Batches(Base):
 class Prod_Handover(Base):
     __tablename__ = "prod_handover"
 
-    prod_id = Column(Integer, primary_key=True,
+    handover_id = Column(Integer, primary_key=True,
                      nullable=False, autoincrement=True)
     batch_id = Column(Integer,ForeignKey("batches.batch_id", ondelete='CASCADE'), nullable=False)
-    product = Column(String(255), nullable=False)
+    p_name = Column(String(255), nullable=False)
     qty = Column(Integer, nullable=False)
-    unit = Column(String(50), nullable=True)
 
     batches = relationship("Batches", back_populates="prod_handover")
 
@@ -247,10 +247,6 @@ class Orders(Base):
 
 #     cg_id = Column(Integer, primary_key=True,
 #                    nullable=False, autoincrement=True)
-#     product = Column(String(255), nullable=False)
-#     cons_qty = Column(Integer, nullable=False)
-#     pkg = Column(Integer, nullable=True)
-#     batch_no = Column(Integer, nullable=False)
 #     remarks = Column(String(255), nullable=True)
 #     dis_id = Column(Integer, ForeignKey("dis_details.dis_id"), nullable=True)
 #     gk_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
@@ -260,47 +256,82 @@ class Orders(Base):
 
 
 
+
+
 # # main tales for records
 # #for stock manageryy
 
 
-# class Transports(Base):
-#     __tablename__ = "transports"
+class Transports(Base):
+    __tablename__ = "transports"
 
-#     tran_id = Column(Integer, primary_key=True,
-#                      nullable=False, autoincrement=True)
-#     vehicle = Column(String(255), nullable=False)
-#     name = Column(String(255), nullable=True)
-#     place = Column(String(255), nullable=True)
-#     __allow_unmapped__ = True
+    tran_id = Column(Integer, primary_key=True,
+                     nullable=False, autoincrement=True)
+    veh_no = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+    # place = Column(String(255), nullable=True)
 
+    dis_details = relationship("Dispatches", back_populates="transports")
 
-# class Drivers(Base):
-#     __tablename__ = "drivers"
-
-#     drv_id = Column(Integer, primary_key=True,
-#                      nullable=False, autoincrement=True)
-#     name = Column(String(255), nullable=True)
-#     phone = Column(String(10), nullable=True)
-#     phone = Column(String(25), nullable=True)
-#     __allow_unmapped__ = True
+    __allow_unmapped__ = True
 
 
-# class Dispatches(Base):
-#     __tablename__ = "dis_details"
+class Drivers(Base):
+    __tablename__ = "drivers"
 
-#     dis_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     buyer = Column(String(255), nullable=True)
-#     invoice = Column(String(255), nullable=False)
-#     inv_value = Column(Integer, nullable=False)
-#     trans = Column(Integer, ForeignKey("transports.tran_id"), nullable=True)
-#     driv_details = Column(Integer, ForeignKey("drivers.drv_id"), nullable=True)
-#     dis_time = Column(TIMESTAMP(timezone=True),
-#                       nullable=False, server_default=text('now()'))
+    drv_id = Column(Integer, primary_key=True,
+                     nullable=False, autoincrement=True)
+    name = Column(String(255), nullable=True)
+    phone = Column(String(10), nullable=True, index=True, unique=True)
+    license_no = Column(String(25), nullable=True)
 
-#     __allow_unmapped__ = True
+    dis_details = relationship("Dispatches", back_populates="drivers")
 
+    __allow_unmapped__ = True
+
+
+
+class Dispatches(Base):
+    __tablename__ = "dis_details"
+
+    dis_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    buyer = Column(String(100), nullable=True)
+    invoice = Column(String(50), nullable=False)
+    inv_value = Column(Integer, nullable=False)
+    dis_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    checked_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+
+    trans_id = Column(Integer, ForeignKey("transports.tran_id"), nullable=True)
+    driv_id = Column(Integer, ForeignKey("drivers.drv_id"), nullable=True)
+    dis_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    recv_time = Column(TIMESTAMP(timezone=True),
+                       nullable=True,)
+    checkout = Column(Boolean, nullable=False, server_default="false")
+
+    
+    consignments = relationship("Consignments", back_populates="dis_details", cascade='all, delete-orphan')
+    drivers = relationship("Drivers", back_populates="dis_details")
+    transports = relationship("Transports", back_populates="dis_details")
+
+    __allow_unmapped__ = True
+
+
+class Consignments(Base):
+    __tablename__ = "consignments"
+
+    cg_id = Column(Integer, primary_key=True,
+                   nullable=False, autoincrement=True)
+    p_name = Column(String(255), nullable=False)
+    qty = Column(Integer, nullable=False)
+    checked_qty = Column(Integer, nullable=False, server_default="0")
+
+    dis_id = Column(Integer, ForeignKey("dis_details.dis_id", ondelete='CASCADE'), nullable=True)
+
+    dis_details = relationship("Dispatches", back_populates="consignments")
+
+    __allow_unmapped__ = True
 
 # class Products(Base):
 #     __tablename__ = "man_prod"
