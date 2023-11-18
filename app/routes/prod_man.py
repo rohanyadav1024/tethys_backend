@@ -8,6 +8,23 @@ from ..database import get_db
 router = APIRouter(prefix='/pmanager', tags=["ProductionManager"])
 
 
+@router.get("/",
+            #  response_model=tSchemas.RequisitionOut,
+            status_code=status.HTTP_200_OK)
+def production_manager_rawmaterials_inventory(db: Session = Depends(get_db)):
+    invent_query = db.query(models.PManagerMatInventory).all()
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched production inventory data",
+        'data': [{
+            'material_id': invent_item.m_id,
+            'available_qty': invent_item.avail_qty, 
+            'mat_details': invent_item.materials
+            } for invent_item in invent_query
+        ]
+    }
+
 # to see requisition data req_by prod manager
 @router.post("/id",
              status_code=status.HTTP_200_OK)
@@ -62,6 +79,10 @@ def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get
             } for slot_data in slot_data_query
         ]
     }
+
+
+
+
 
 
 @router.post("/create",
@@ -124,6 +145,9 @@ def create_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_d
 
 
 
+
+
+
 # return materials
 @router.post("/return/id",
              status_code=status.HTTP_200_OK)
@@ -182,6 +206,10 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
 
 
 
+
+
+
+
 @router.post("/return/create",
              #  response_model=tSchemas.RequisitionOut,
              status_code=status.HTTP_200_OK)
@@ -201,12 +229,33 @@ def create_return_request(reqs: tSchemas.RequisitionIn, db: Session = Depends(ge
     db.refresh(new_slot)
 
     for item in reqs.items:
+        #updating production inventory
+        invent_item = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == item.id).first()
+        if invent_item and invent_item.avail_qty >= item.qty:
+            invent_item.avail_qty -= item.qty
+
+        else:
+            return{
+                'status': "400",
+                'msg': 'insufficient quantity'
+            }
+    db.commit()
+
+    for item in reqs.items:
+        #updating buffer inventory
+        invent_item = db.query(models.BufferRawMaterialInventory).filter(models.BufferRawMaterialInventory.m_id == item.id).first()
+        if invent_item:
+            invent_item.avail_qty += item.qty
+        else:
+            new_inv_item = models.BufferRawMaterialInventory(m_id=item.id, avail_qty=item.qty)
+            db.add(new_inv_item)
+
+        # creating return requestion for each material
         new_return_req = models.MaterialReturn(
             m_id=item.id, qty_ret=item.qty, slot_id=new_slot.slot_id)
 
         db.add(new_return_req)
-        db.commit()
-        db.refresh(new_return_req)
+    db.commit()
 
     slot_data = db.query(models.ReturnSlot, models.Employees).filter(models.ReturnSlot.slot_id == new_slot.slot_id).join(
         models.Employees, models.Employees.id == models.ReturnSlot.ret_by).first()
@@ -238,4 +287,31 @@ def create_return_request(reqs: tSchemas.RequisitionIn, db: Session = Depends(ge
                 } for req in slot_data[0].mat_return
             ]
         }
+    }
+
+
+
+
+
+@router.post("/remove",
+             #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def update_used_material(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_db)):
+
+    for item in reqs.items:
+        inventory = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == item.id).first()
+        if inventory:
+            inventory.avail_qty -= item.qty
+
+        else:
+            return{
+                'status': "400",
+                'msg': 'insufficient quantity'
+            }
+        
+    db.commit()
+
+    return{
+        'status': "200",
+        'msg': 'material removed successfully'
     }

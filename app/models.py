@@ -67,6 +67,8 @@ class Material(Base):
     g_no = Column(Integer, nullable=False)
     __allow_unmapped__ = True
 
+    prod_raw_inventories = relationship("PManagerMatInventory", back_populates="materials")
+    buff_raw_inventories = relationship("BufferRawMaterialInventory", back_populates="materials")
     raw_inventories = relationship("RawMaterialInventory", back_populates="materials")
     requisition = relationship("Requisition", back_populates="materials")
     mat_return = relationship("MaterialReturn", back_populates="materials")
@@ -79,6 +81,22 @@ class RawMaterialInventory(Base):
     avail_qty = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="raw_inventories")
+
+class BufferRawMaterialInventory(Base):
+    __tablename__ = "buff_raw_inventories"
+
+    m_id = Column(Integer, ForeignKey("materials.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    materials = relationship("Material", back_populates="buff_raw_inventories")
+
+class PManagerMatInventory(Base):
+    __tablename__ = "prod_raw_inventories"
+
+    m_id = Column(Integer, ForeignKey("materials.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    materials = relationship("Material", back_populates="prod_raw_inventories")
 
 class Slot(Base):
     __tablename__ = 'slots'
@@ -94,7 +112,7 @@ class Slot(Base):
                       nullable=True)
     issue_status = Column(Boolean, nullable=False, default=False)
 
-    requisition = relationship("Requisition", back_populates="slots")
+    requisition = relationship("Requisition", back_populates="slots", cascade='all, delete-orphan')
 
     __allow_unmapped__ = True
 
@@ -103,7 +121,7 @@ class Requisition(Base):
 
     req_id = Column(Integer, primary_key=True,
                     nullable=False, autoincrement=True)
-    slot_id = Column(Integer,ForeignKey("slots.slot_id"), nullable=False)
+    slot_id = Column(Integer,ForeignKey("slots.slot_id", ondelete='CASCADE'), nullable=False)
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_req = Column(Integer, nullable=False)
 
@@ -128,7 +146,7 @@ class ReturnSlot(Base):
     #                   nullable=True)
     approved = Column(Boolean, nullable=False, default=False)
 
-    mat_return = relationship("MaterialReturn", back_populates="r_slots")
+    mat_return = relationship("MaterialReturn", back_populates="r_slots" ,cascade='all, delete-orphan')
 
     __allow_unmapped__ = True
 
@@ -137,7 +155,7 @@ class MaterialReturn(Base):
 
     ret_id = Column(Integer, primary_key=True,
                        nullable=False, autoincrement=True)
-    slot_id = Column(Integer,ForeignKey("r_slots.slot_id"), nullable=False)
+    slot_id = Column(Integer,ForeignKey("r_slots.slot_id", ondelete='CASCADE'), nullable=False)
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_ret = Column(Integer, nullable=False)
 
@@ -147,37 +165,36 @@ class MaterialReturn(Base):
 
 
 
-# class Batch(Base):
-#     __tablename__ = 'batches'
+class Batches(Base):
+    __tablename__ = 'batches'
 
-#     batch_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     remarks = Column(String(255), nullable=True)
-#     handover_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     recieved_time = Column(TIMESTAMP(timezone=True),
-#                       nullable=True)
-#     mfg = Column(TIMESTAMP(timezone=True), nullable=False,
-#                  server_default=text('now()'))
+    batch_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    remarks = Column(String(255), nullable=True)
+    handover_by = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    recieved_time = Column(TIMESTAMP(timezone=True),
+                      nullable=True)
+    mfg = Column(TIMESTAMP(timezone=True), nullable=False,
+                 server_default=text('now()'))
 
-#     products = relationship("Prod_Handover", back_populates="batches")
+    prod_handover = relationship("Prod_Handover", back_populates="batches", cascade='all, delete-orphan')
 
-#     __allow_unmapped__ = True
+    __allow_unmapped__ = True
 
-# class Prod_Handover(Base):
-#     __tablename__ = "prod_handover"
+class Prod_Handover(Base):
+    __tablename__ = "prod_handover"
 
-#     prod_id = Column(Integer, primary_key=True,
-#                      nullable=False, autoincrement=True)
-#     batch_id = Column(Integer,ForeignKey("batches.batch_id"), nullable=False)
-#     product = Column(String(255), nullable=False)
-#     qty = Column(Integer, nullable=False)
-#     remarks = Column(String(255), nullable=True)
-#     prod_manager = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    prod_id = Column(Integer, primary_key=True,
+                     nullable=False, autoincrement=True)
+    batch_id = Column(Integer,ForeignKey("batches.batch_id", ondelete='CASCADE'), nullable=False)
+    product = Column(String(255), nullable=False)
+    qty = Column(Integer, nullable=False)
+    unit = Column(String(50), nullable=True)
 
-#     batches = relationship("Batches", back_populates="prod_handover")
+    batches = relationship("Batches", back_populates="prod_handover")
 
-#     __allow_unmapped__ = True
+    __allow_unmapped__ = True
 
 
 # gate keeper tables: accesed by gatekeeper
@@ -202,7 +219,7 @@ class Purchases(Base):
                        nullable=True,)
     recieved = Column(Boolean, nullable=False, server_default="false")
     
-    orders = relationship("Orders", back_populates="purchases")
+    orders = relationship("Orders", back_populates="purchases", cascade='all, delete-orphan')
 
     __allow_unmapped__ = True
 
@@ -216,7 +233,7 @@ class Orders(Base):
     ord_qty = Column(Integer, nullable=False)
     recieved_qty = Column(Integer, nullable=False, server_default="0")
 
-    pur_id = Column(Integer, ForeignKey("purchases.pur_id"), nullable=True)
+    pur_id = Column(Integer, ForeignKey("purchases.pur_id", ondelete='CASCADE'), nullable=True)
 
     materials = relationship("Material", back_populates="orders")
     purchases = relationship("Purchases", back_populates="orders")

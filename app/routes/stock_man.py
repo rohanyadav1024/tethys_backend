@@ -147,7 +147,19 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
                 }
             }
         
+        # stock inventory
         inventory.avail_qty -= req.qty_req
+
+    db.commit()
+
+    for req in slot_query.requisition:
+        # production inventory
+        invent_item = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == req.m_id).first()
+        if invent_item:
+            invent_item.avail_qty += req.qty_req
+        else:
+            new_inv_item = models.PManagerMatInventory(m_id=req.m_id, avail_qty=req.qty_req)
+            db.add(new_inv_item)
             
     slot_query.issue_status = True
     slot_query.issued_by = slot.issue_by
@@ -287,13 +299,28 @@ def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
         }
     
     for ret_mat in slot_data.mat_return:
+        # buffer inventory
+        invent_item = db.query(models.BufferRawMaterialInventory).filter(models.BufferRawMaterialInventory.m_id == ret_mat.m_id).first()
+        if invent_item and invent_item.avail_qty >= ret_mat.qty_ret:
+            invent_item.avail_qty -= ret_mat.qty_ret
+
+        else:
+            return{
+                'status': "400",
+                'msg': "insuffiecient quantity in buffer",
+            }
+        
+    db.commit()
+    
+    for ret_mat in slot_data.mat_return:
+        # stock inventory
         invent_item = db.query(models.RawMaterialInventory).filter(models.RawMaterialInventory.m_id == ret_mat.m_id).first()
         if invent_item:
             invent_item.avail_qty += ret_mat.qty_ret
         else:
             new_inv_item = models.RawMaterialInventory(m_id=ret_mat.m_id, avail_qty=ret_mat.qty_ret)
             db.add(new_inv_item)
-        db.commit()
+
 
     slot_data.approved = True
     db.commit()
@@ -306,6 +333,63 @@ def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
                 'approved' : slot_data.approved
             }
         }
+
+
+
+
+@router.post('/return/reqs/deny')
+def deny_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+
+    slot_data = db.query(models.ReturnSlot).filter(
+        models.ReturnSlot.slot_id == slot.slot_id).first()
+    if not slot_data:
+        return {
+            'status': "400",
+            'msg': "slot not available",    
+        }
+    
+    if slot_data.approved:
+        return {
+            'status': "400",
+            'msg': "slot already approved",
+        }
+    
+    for ret_mat in slot_data.mat_return:
+        # buffer inventory
+        invent_item = db.query(models.BufferRawMaterialInventory).filter(models.BufferRawMaterialInventory.m_id == ret_mat.m_id).first()
+        if invent_item and invent_item.avail_qty >= ret_mat.qty_ret:
+            invent_item.avail_qty -= ret_mat.qty_ret
+
+        else:
+            return{
+                'status': "400",
+                'msg': "insuffiecient quantity in buffer",
+            }
+        
+    db.commit()
+    
+    for ret_mat in slot_data.mat_return:
+        # stock inventory
+        invent_item = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == ret_mat.m_id).first()
+        if invent_item:
+            invent_item.avail_qty += ret_mat.qty_ret
+        else:
+            new_inv_item = models.PManagerMatInventory(m_id=ret_mat.m_id, avail_qty=ret_mat.qty_ret)
+            db.add(new_inv_item)
+
+
+    db.delete(slot_data)
+    db.commit()
+
+    return {
+            'status': "200",
+            'msg': "material denied",
+            'data' : {
+                'slot_id': slot.slot_id,
+            }
+        }
+
+
 
 
 @router.post('/return/reqs/slot')
@@ -352,6 +436,8 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
             ]
         }
     }
+
+
 
 
 # post orders for gate keeper
