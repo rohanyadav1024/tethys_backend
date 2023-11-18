@@ -5,7 +5,7 @@ from typing import List
 from .. import schemas, tSchemas, models, utils, oauth2, config
 from ..database import get_db
 
-router = APIRouter(prefix='/pmanager', tags=["ProductionManager"])
+router = APIRouter(prefix='/pmanager', tags=["ProductionManager (RawMaterial)"])
 
 
 @router.get("/",
@@ -314,4 +314,67 @@ def update_used_material(reqs: tSchemas.RequisitionIn, db: Session = Depends(get
     return{
         'status': "200",
         'msg': 'material removed successfully'
+    }
+
+
+router2 = APIRouter(prefix='/pmanager', tags=["ProductionManager (Product)"])
+
+
+# for manufactured products
+@router2.post("/create/product",
+             #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def handover_batch(handovers: tSchemas.BatchesIn, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == handovers.hand_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot send request'
+        }
+
+    new_batch = models.Batches(remarks=handovers.remarks, handover_by=handovers.hand_by)
+    db.add(new_batch)
+    db.commit()
+    db.refresh(new_batch)
+
+    for prod in handovers.prods:
+        new_handover = models.Prod_Handover(
+            p_name=prod.p_name, qty=prod.qty, batch_id=new_batch.batch_id)
+
+        db.add(new_handover)
+        db.commit()
+        db.refresh(new_handover)
+
+    batch_data = db.query(models.Batches, models.Employees).filter(models.Batches.batch_id == new_batch.batch_id).join(
+        models.Employees, models.Employees.id == models.Batches.handover_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully posted handover requests",
+        'data': {
+            'batch_id': batch_data[0].batch_id,
+            'mfg': batch_data[0].mfg,
+            'remarks': batch_data[0].remarks,
+            'is_recieved': batch_data[0].is_recieved,
+
+            'handover_by': {
+                "id": batch_data[1].id,
+                "name": batch_data[1].name,
+                "email": batch_data[1].email,
+                "role": batch_data[1].role,
+                "phone": batch_data[1].phone,
+                "created_at": batch_data[1].created_at,
+                "is_active": batch_data[1].is_active,
+            },
+
+            'handovers': [
+                {
+                    'handover_id': handover.handover_id,
+                    'product_name': handover.p_name,
+                    'qty_req': handover.qty,
+                } for handover in batch_data[0].prod_handover
+            ]
+        }
     }

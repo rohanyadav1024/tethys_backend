@@ -51,6 +51,12 @@ class IssueReq(BaseModel):
     issue_materials : List[ReqMat]
     issue_by: int
 
+class BatchData(BaseModel):
+    batch_id : int
+
+class AcceptBatch(BatchData):
+    recieved_by : int
+
 # class Issued(BaseModel):
 #     material : str
 #     qty_issued : int
@@ -89,6 +95,7 @@ class Orders(BaseModel):
     m_id : int
     ord_qty : int
 
+    
 class Purchases(BaseModel):
     supp_name : str
     t_amount : float
@@ -103,15 +110,6 @@ class Purchases(BaseModel):
 #     pur_id : int
 #     pur_time : datetime
 
-class GateOrders(BaseModel):
-    order_id: int
-    qty_recieved: int
-
-class CheckOrders(BaseModel):
-    pur_id : int
-    recieved_by: int
-    orders: List[GateOrders]
-
 
 
     
@@ -121,4 +119,49 @@ class CheckOrders(BaseModel):
 #     pur_detials : PurchasesOut
 #     gk_id : Optional[int] = None
 #     recv_time : Optional[datetime] = None
+
+class ProdHandover(BaseModel):
+    p_name: str
+    qty: int
+
+class BatchesIn(BaseModel):
+    prods: List[ProdHandover]
+    hand_by: int
+    remarks: Optional[str] = None
+
+
+class Consignments(BaseModel):
+    product : str
+    qty : int
+
+class Dispatches(BaseModel):
+    buyer : str
+    invoice_value : float #total amount
+    invoice : str
+    veh_no: str
+    transport_name: str
+    driv_name: str
+    driv_phone: str
+    driv_license: str
+    remarks : Optional[str] = None
+    dis_by : int
+    consigns : List[Consignments]
+
+class GateOrders(BaseModel):
+    order_id: int
+    qty_recieved: int
+
+class CheckOrders(BaseModel):
+    pur_id : int
+    recieved_by: int
+    orders: List[GateOrders]
+
+class GateConsignments(BaseModel):
+    cons_id: int
+    qty_checked: int
+
+class CheckConsignments(BaseModel):
+    dis_id : int
+    checked_by: int
+    consigns: List[GateConsignments]
 

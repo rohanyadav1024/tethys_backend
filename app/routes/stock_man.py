@@ -142,8 +142,8 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
                 'data': {
                     'qty_req': req.qty_req,
                     'avail_qty': inventory.avail_qty if inventory else 0,
-                    'm_id': req.m_id,
-                    'mat_details' : req.materials
+                    # 'm_id': req.m_id,
+                    # 'mat_details' : req.materials
                 }
             }
         
@@ -172,6 +172,36 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
         'status': "200",
         'msg': "successfully approved requisition",
         'data': slot_query
+    }
+
+
+
+
+@router.delete("/reqs/deny/slot",
+             #  status_code=status.HTTP_200_OK
+             )
+def deny_slot(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+
+    slot_query = db.query(models.Slot).filter(
+        models.Slot.slot_id == slot.slot_id).first()
+
+    if not slot_query:
+        return {
+            'status': "400",
+            'msg': "no requests for this slot",
+        }
+    if slot_query.issue_status:
+        return {
+            'status': "400",
+            'msg': "this slot has been already issued",
+        }
+    
+    db.delete(slot_query)
+    db.commit()
+
+    return{
+        'status': "200",
+        'msg': "requisition slot deleted successfully",
     }
 
 
@@ -281,8 +311,10 @@ def get_all_return_request(db: Session = Depends(get_db)):
     }
 
 
+
+
 @router.post('/return/reqs/allow')
-def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+def approve_returns(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
 
     slot_data = db.query(models.ReturnSlot).filter(
         models.ReturnSlot.slot_id == slot.slot_id).first()
@@ -323,6 +355,7 @@ def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
 
 
     slot_data.approved = True
+
     db.commit()
 
     return {
@@ -337,8 +370,8 @@ def approve_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
 
 
 
-@router.post('/return/reqs/deny')
-def deny_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
+@router.delete('/return/reqs/deny')
+def deny_returns(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
 
     slot_data = db.query(models.ReturnSlot).filter(
         models.ReturnSlot.slot_id == slot.slot_id).first()
@@ -388,6 +421,7 @@ def deny_returns(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
                 'slot_id': slot.slot_id,
             }
         }
+
 
 
 
@@ -499,6 +533,243 @@ def create_purchase_orders(puchs: tSchemas.Purchases, db: Session = Depends(get_
                     'qty_req': ord.ord_qty,
                     'mat_details': ord.materials,
                 } for ord in slot_data[0].orders
+            ]
+        }
+    }
+
+
+
+
+
+
+router2 = APIRouter(prefix='/smanager', tags=["Stock Manager (Products)"])
+
+@router2.get("/handovers",
+            #  response_model=tSchemas.RequisitionOut,
+            status_code=status.HTTP_200_OK)
+def get_all_handover_request(db: Session = Depends(get_db)):
+    
+    batch_data_query = db.query(models.Batches, models.Employees).join(
+        models.Employees, models.Employees.id == models.Batches.handover_by).all()
+
+    return {
+        'status': "200",
+        'msg': "successfully fetched handover requests",
+        'data': [{
+            'batch_id': batch_data[0].batch_id,
+            'mfg': batch_data[0].mfg,
+            'remarks': batch_data[0].remarks,
+            'is_recieved': batch_data[0].is_recieved,
+
+            'handover_by': {
+                "id": batch_data[1].id,
+                "name": batch_data[1].name,
+                "email": batch_data[1].email,
+                "role": batch_data[1].role,
+                "phone": batch_data[1].phone,
+                "created_at": batch_data[1].created_at,
+                "is_active": batch_data[1].is_active,
+            },
+
+            'handovers': [
+                {
+                    'handover_id': handover.handover_id,
+                    'product_name': handover.p_name,
+                    'qty_req': handover.qty,
+                } for handover in batch_data[0].prod_handover
+            ]
+        } for batch_data in batch_data_query
+        ]
+    }
+
+
+
+
+
+@router2.post("/handovers/recieve/batch",
+             #  status_code=status.HTTP_200_OK
+             )
+def accept_handover(batch: tSchemas.AcceptBatch, db: Session = Depends(get_db)):
+
+    batch_data = db.query(models.Batches).filter(
+        models.Batches.batch_id == batch.batch_id).first()
+
+    if not batch_data:
+        return {
+            'status': "400",
+            'msg': "no requests for this batch",
+        }
+    if batch_data.is_recieved:
+        return {
+            'status': "400",
+            'msg': "this batch has been already accepted",
+        }
+    
+    batch_data.is_recieved = True
+    batch_data.recieved_by = batch.recieved_by
+    batch_data.recieved_time = datetime.now()
+
+    db.commit()
+    db.refresh(batch_data)
+
+    emp = db.query(models.Employees).filter(models.Employees.id == batch.recieved_by).first()
+
+    return{
+        'status': "200",
+        'msg': "requisition slot deleted successfully",
+        'data': {
+            'batch_id': batch_data.batch_id,
+            'mfg': batch_data.mfg,
+            'remarks': batch_data.remarks,
+            'is_recieved': batch_data.is_recieved,
+            'recieved_time': batch_data.recieved_time,
+
+            'recieved_by': {
+                "id": emp.id,
+                "name": emp.name,
+                "email": emp.email,
+                "role": emp.role,
+                "phone": emp.phone,
+                "created_at": emp.created_at,
+                "is_active": emp.is_active,
+            },
+
+            'handovers': [
+                {
+                    'handover_id': handover.handover_id,
+                    'product_name': handover.p_name,
+                    'qty_req': handover.qty,
+                } for handover in batch_data.prod_handover
+            ]
+        }
+    }
+
+
+
+
+
+@router2.delete("/handovers/deny/batch",
+             #  status_code=status.HTTP_200_OK
+             )
+def deny_handover(batch: tSchemas.BatchData, db: Session = Depends(get_db)):
+
+    batch_query = db.query(models.Batches).filter(
+        models.Batches.batch_id == batch.batch_id).first()
+
+    if not batch_query:
+        return {
+            'status': "400",
+            'msg': "no requests for this batch",
+        }
+    if batch_query.is_recieved:
+        return {
+            'status': "400",
+            'msg': "this batch has been already accepted",
+        }
+    
+    db.delete(batch_query)
+    db.commit()
+
+    return{
+        'status': "200",
+        'msg': "handover batch deleted successfully",
+    }
+
+
+
+
+# post consignments for gate keeper
+@router2.post("/consignments/create",
+             #  response_model=tSchemas.RequisitionOut,
+             status_code=status.HTTP_200_OK)
+def create_consignments(disp: tSchemas.Dispatches, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == disp.dis_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot dispatch'
+        }
+
+    # dispatch = puchs.model_dump(exclude={"orders"})
+    new_dispatch = models.Dispatches(
+        buyer=disp.buyer,
+        invoice=disp.invoice,
+        inv_value=disp.invoice_value,
+        dis_by=disp.dis_by,
+    )
+    db.add(new_dispatch)
+    db.commit()
+    db.refresh(new_dispatch)
+
+    for item in disp.consigns:
+        new_consign = models.Consignments(
+            p_name=item.product, qty=item.qty, dis_id=new_dispatch.dis_id)
+
+        db.add(new_consign)
+    db.commit()
+
+    driver_query = db.query(models.Drivers).filter(models.Drivers.phone == disp.driv_phone).first()
+    if not driver_query:
+        driver_query = models.Drivers(
+            name=disp.driv_name,
+            phone=disp.driv_phone,
+            license_no=disp.driv_license)
+        db.add(driver_query)
+        db.commit()
+        db.refresh(driver_query)
+
+    vehicle_number = disp.veh_no.strip().replace(" ", "").upper()
+
+    trans_query = db.query(models.Transports).filter(models.Transports.veh_no == vehicle_number).first()
+    if not trans_query:
+        trans_query = models.Transports(
+            veh_no=vehicle_number,
+            name=disp.transport_name,)
+        db.add(trans_query)
+        db.commit()
+        db.refresh(trans_query)
+
+    new_dispatch.driv_id = driver_query.drv_id
+    new_dispatch.trans_id = trans_query.tran_id
+    db.commit()
+
+    dis_data = db.query(models.Dispatches, models.Employees).filter(models.Dispatches.dis_id == new_dispatch.dis_id).join(
+        models.Employees, models.Employees.id == models.Dispatches.dis_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully posted material orders",
+        'data': {
+            'dis_id': dis_data[0].dis_id,
+            'buyer': dis_data[0].buyer,
+            'invoice': dis_data[0].invoice,
+            'inv_value': dis_data[0].inv_value,
+            'recv_time': dis_data[0].recv_time,
+            'checkout': dis_data[0].checkout,
+            'checked_by' : dis_data[0].checked_by,
+
+            'dis_by': {
+                "id": dis_data[1].id,
+                "name": dis_data[1].name,
+                "email": dis_data[1].email,
+                "role": dis_data[1].role,
+                "phone": dis_data[1].phone,
+                "created_at": dis_data[1].created_at,
+                "is_active": dis_data[1].is_active,
+            },
+
+            'driver_detials' : dis_data[0].drivers,
+            'vehicle': dis_data[0].transports,
+
+            'consignments': [
+                {
+                    'consignment_id': consign.cg_id,
+                    'qty': consign.qty,
+                    'product_name': consign.p_name,
+                    'product_name': consign.checked_qty,
+                } for consign in dis_data[0].consignments
             ]
         }
     }
