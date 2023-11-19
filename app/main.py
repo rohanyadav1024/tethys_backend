@@ -27,7 +27,7 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to the API"}
+    return {"message": "Welcome to the Tethys"}
 
 app.include_router(employees.router)
 app.include_router(owner.router)
