@@ -149,6 +149,8 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
         
         # stock inventory
         inventory.avail_qty -= req.qty_req
+        # database requisitions
+        req.issue_qty = req.qty_req
 
     db.commit()
 
@@ -160,6 +162,8 @@ def issue_slot(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
         else:
             new_inv_item = models.PManagerMatInventory(m_id=req.m_id, avail_qty=req.qty_req)
             db.add(new_inv_item)
+
+        req.issue_qty = req.qty_req
             
     slot_query.issue_status = True
     slot_query.issued_by = slot.issue_by
@@ -205,72 +209,94 @@ def deny_slot(slot: tSchemas.SlotData, db: Session = Depends(get_db)):
     }
 
 
-# @router.post("/reqs/issue/req",
-#              status_code=status.HTTP_200_OK)
-# def issue_requisitions(reqs: tSchemas.IssueReq, db: Session = Depends(get_db)):
+@router.post("/reqs/issue/req",
+             status_code=status.HTTP_200_OK)
+def issue_requisitions(reqs: tSchemas.IssueReq, db: Session = Depends(get_db)):
 
-#     iscomplete = True
+    iscomplete = True
 
-#     for req in reqs.issue_materials:
-#         req_query = db.query(models.Requisition).filter(
-#             models.Requisition.req_id == req.id).first()
+    for req in reqs.issue_materials:
+        req_query = db.query(models.Requisition).filter(
+            models.Requisition.req_id == req.id).first()
 
-#         if not req_query:
-#             return {
-#                 'status': "400",
-#                 'msg': "requisitions with id {req.req_id} not available",
-#             }
+        if not req_query:
+            return {
+                'status': "400",
+                'msg': "requisitions with id {req.req_id} not available",
+            }
 
-#         req_query.issue_qty = req.qty
-#         if req_query.slots.issue_status < 1:
-#             req_query.slots.issue_status = 1
+        inventory = db.query(models.RawMaterialInventory).filter(
+            models.RawMaterialInventory.m_id == req_query.m_id).first()
+        if inventory is None or inventory.avail_qty < req.qty:
+            return {
+                'status': "200",
+                'msg': "insufficient quantity in stocks",
+                'data': {
+                    'qty_req': req.qty,
+                    'avail_qty': inventory.avail_qty if inventory else 0,
+                }
+            }
+        
+        # stock inventory
+        inventory.avail_qty -= req.qty
 
-#         req_query.issued_by = reqs.issue_by
-#         db.commit()
-#         db.refresh(req_query)
+        # db updations
+        req_query.issue_qty += req.qty
+        if req_query.qty_req != req.qty:
+            iscomplete = False
 
-#         if req_query.qty_req != req.qty:
-#             iscomplete = False
+        # production inventory
+        invent_item = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == req_query.m_id).first()
+        if invent_item:
+            invent_item.avail_qty += req.qty
+        else:
+            new_inv_item = models.PManagerMatInventory(m_id=req_query.m_id, avail_qty=req.qty)
+            db.add(new_inv_item)
 
-#     slot = req_query.slots
+    db.commit()
 
-#     if iscomplete:
-#         slot.issue_status = 2
+    slot = req_query.slots
+    slot.issued_by = reqs.issue_by
 
-#     db.commit()
-#     db.refresh(slot)
+    if iscomplete:
+        slot.issue_status = True
 
-#     req_issue_data = db.query(models.Requisition, models.Employees).filter(models.Requisition.slot_id == slot.slot_id).join(
-#         models.Employees, models.Employees.id == models.Requisition.issued_by).all()
+    db.commit()
+    db.refresh(slot)
 
-#     return {
-#         'status': "200",
-#         'msg': "successfully approved requisitions",
-#         'data': {
-#             'slot_id': slot.slot_id,
-#             'req_time': slot.req_time,
-#             'remarks': slot.remarks,
-#             'issue_status': slot.issue_status,
+    req_issue_data = db.query(models.Requisition).filter(models.Requisition.slot_id == slot.slot_id).all()
+    emp = db.query(models.Employees).filter(models.Employees.id == reqs.issue_by).first()
+    return {
+        'status': "200",
+        'msg': "successfully approved requisitions",
+        'data': {
+            'slot_id': slot.slot_id,
+            'req_time': slot.req_time,
+            'remarks': slot.remarks,
+            'issue_status': slot.issue_status,
+            'issued_by': {
+                        "id": emp.id,
+                        "name": emp.name,
+                        "email": emp.email,
+                        "role": emp.role,
+                        "phone": emp.phone,
+                        "created_at": emp.created_at,
+                        "is_active": emp.is_active,
+                    },
 
-#             'requisitions': [
-#                 {
-#                     'req_id': req.req_id,
-#                     'qty_req': req.qty_req,
-#                     'qty_issued': req.issue_qty,
-#                     'mat_details': req.materials,
-#                     'issued_by': {
-#                         "id": emp.id,
-#                         "name": emp.name,
-#                         "email": emp.email,
-#                         "role": emp.role,
-#                         "phone": emp.phone,
-#                         "created_at": emp.created_at,
-#                         "is_active": emp.is_active,
-#                     },
-#                 } for req, emp in req_issue_data
-#             ]
-#         }
-#     }
+            'requisitions': [
+                {
+                    'req_id': req.req_id,
+                    'qty_req': req.qty_req,
+                    'qty_issued': req.issue_qty,
+                    'mat_details': req.materials,
+                    
+                } for req in req_issue_data
+            ]
+        }
+    }
+
+
 
 @router.get("/return/reqs",
             #  response_model=tSchemas.RequisitionOut,
@@ -279,12 +305,17 @@ def get_all_return_request(db: Session = Depends(get_db)):
 
     slot_data_query = db.query(models.ReturnSlot, models.Employees).join(
         models.Employees, models.Employees.id == models.ReturnSlot.ret_by).all()
+    
+    # slot_data_query = db.query(models.ReturnSlot, models.Employees, models.Slot).join(
+    #     models.Employees, models.Employees.id == models.ReturnSlot.ret_by).join(
+    #     models.Slot, models.Slot.slot_id == models.ReturnSlot.req_slot_id).all()
 
     return {
         'status': "200",
         'msg': "successfully fetched return requests",
         'data': [{
-            'slot_id': slot_data[0].slot_id,
+            'ret_slot_id': slot_data[0].slot_id,
+            'req_slot_id': slot_data[0].req_slot_id,
             'ret_time': slot_data[0].ret_time,
             'remarks': slot_data[0].remarks,
             'approved': slot_data[0].approved,
@@ -302,6 +333,8 @@ def get_all_return_request(db: Session = Depends(get_db)):
             'materials_return': [
                 {
                     'ret_id': req.ret_id,
+                    # 'qty_req': req.qty_ret,
+                    # 'qty_issued': req.qty_ret,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in slot_data[0].mat_return
@@ -447,6 +480,7 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
         'msg': "successfully fetched return requisition",
         'data': {
             'slot_id': slot_data.slot_id,
+            'req_slot_id': slot_data.req_slot_id,
             'ret_time': slot_data.ret_time,
             'remarks': slot_data.remarks,
             'approved': slot_data.approved,
@@ -557,6 +591,7 @@ def get_all_handover_request(db: Session = Depends(get_db)):
         'msg': "successfully fetched handover requests",
         'data': [{
             'batch_id': batch_data[0].batch_id,
+            'req_slot_id': batch_data[0].req_slot_id,
             'mfg': batch_data[0].mfg,
             'remarks': batch_data[0].remarks,
             'is_recieved': batch_data[0].is_recieved,
@@ -619,6 +654,7 @@ def accept_handover(batch: tSchemas.AcceptBatch, db: Session = Depends(get_db)):
         'msg': "requisition slot deleted successfully",
         'data': {
             'batch_id': batch_data.batch_id,
+            'req_slot_id': batch_data.req_slot_id,
             'mfg': batch_data.mfg,
             'remarks': batch_data.remarks,
             'is_recieved': batch_data.is_recieved,

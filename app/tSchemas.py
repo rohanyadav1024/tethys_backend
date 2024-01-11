@@ -67,6 +67,11 @@ class AcceptBatch(BatchData):
 #     issue_id : int
 #     issue_time : datetime
 
+class ReturnIn(BaseModel):
+    items : List[ReqMat]
+    req_slot_id: int
+    req_by : int
+    remarks: Optional[str] = None
 
 # class Returns(BaseModel):
 #     material : str
@@ -125,6 +130,7 @@ class ProdHandover(BaseModel):
     qty: int
 
 class BatchesIn(BaseModel):
+    req_slot_id:int
     prods: List[ProdHandover]
     hand_by: int
     remarks: Optional[str] = None
