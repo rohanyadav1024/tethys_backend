@@ -131,6 +131,7 @@ class Requisition(Base):
 
     materials = relationship("Material", back_populates="requisition")
     slots = relationship("Slot", back_populates="requisition")
+    mat_return = relationship("MaterialReturn", back_populates="requisition")
 
     __allow_unmapped__ = True
 
@@ -162,11 +163,13 @@ class MaterialReturn(Base):
                     nullable=False, autoincrement=True)
     slot_id = Column(Integer, ForeignKey(
         "r_slots.slot_id", ondelete='CASCADE'), nullable=False)
+    req_id = Column(Integer, ForeignKey("requisition.req_id")) #for requisitions mapping
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_ret = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="mat_return")
     r_slots = relationship("ReturnSlot", back_populates="mat_return")
+    requisition = relationship("Requisition", back_populates="mat_return")
 
     __allow_unmapped__ = True
 

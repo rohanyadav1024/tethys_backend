@@ -35,6 +35,8 @@ def get_all_requisition(db: Session = Depends(get_db)):
 
     slot_data_query = db.query(models.Slot, models.Employees).join(
         models.Employees, models.Employees.id == models.Slot.req_by).all()
+    
+    # req_with_issue = db.query(models.Requisition).all()
 
     return {
         'status': "200",
@@ -58,6 +60,7 @@ def get_all_requisition(db: Session = Depends(get_db)):
                 {
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
+                    'qty_issued': req.issue_qty,
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
             ]
@@ -106,6 +109,7 @@ def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_
                 {
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
+                    'qty_issued': req.issue_qty,
                     'mat_details': req.materials,
                 } for req in reqs_data
             ]
@@ -257,6 +261,7 @@ def issue_requisitions(reqs: tSchemas.IssueReq, db: Session = Depends(get_db)):
 
     slot = req_query.slots
     slot.issued_by = reqs.issue_by
+    slot.issue_time = datetime.now()
 
     if iscomplete:
         slot.issue_status = True
@@ -333,8 +338,8 @@ def get_all_return_request(db: Session = Depends(get_db)):
             'materials_return': [
                 {
                     'ret_id': req.ret_id,
-                    # 'qty_req': req.qty_ret,
-                    # 'qty_issued': req.qty_ret,
+                    'qty_req': req.requisition.qty_req,
+                    'qty_issued': req.requisition.issue_qty,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in slot_data[0].mat_return
@@ -498,6 +503,8 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
             'requisitions': [
                 {
                     'ret_id': req.ret_id,
+                    'qty_req': req.requisition.qty_req,
+                    'qty_issued': req.requisition.issue_qty,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in reqs_data
