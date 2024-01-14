@@ -10,11 +10,12 @@ SQLALCHEMY_DATABASE_URL = "postgresql://postgres:EEd5146fd*D4AEaFEFDGeAeAdBEcC1F
 
 # postgresql://postgres:EEd5146fd*D4AEaFEFDGeAeAdBEcC1FA@roundhouse.proxy.rlwy.net:39470/railway
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL) 
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine,)
 
-Base = declarative_base() 
+Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()

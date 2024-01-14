@@ -76,6 +76,8 @@ def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get
                     {
                         'req_id': req.req_id,
                         'qty_req': req.qty_req,
+                        'qty_issued': req.issue_qty,
+                        'qty_ret': req.mat_return.qty_ret if req.mat_return else 0,
                         'mat_details': req.materials,
                     } for req in slot_data[0].requisition
                 ]
@@ -136,6 +138,7 @@ def create_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_d
                 {
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
+                    'qty_issued': req.issue_qty,
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
             ]
@@ -160,8 +163,6 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
     slot_data_query = db.query(models.ReturnSlot).filter(
         models.Slot.req_by == emp.emp_id).all()
 
-    # join(models.Employees, models.Employees.id == models.ReturnSlot.approved_by, isouter=True).
-
     if not slot_data_query:
         return {
             'status': "400",
@@ -177,20 +178,12 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
                 'ret_time': slot_data.ret_time,
                 'remarks': slot_data.remarks,
                 'approved': slot_data.approved,
-                # 'approved_by': {
-                #     "id": slot_data.id,
-                #     "name": slot_data.name,
-                #     "email": slot_data.email,
-                #     "role": slot_data.role,
-                #     "phone": slot_data.phone,
-                #     "created_at": slot_data.created_at,
-                #     "is_active": slot_data.is_active,
-                # },
-
 
                 'materials_return': [
                     {
                         'ret_id': req.ret_id,
+                        'qty_req': req.requisition.qty_req,
+                        'qty_issued': req.requisition.issue_qty,
                         'qty_ret': req.qty_ret,
                         'mat_details': req.materials,
                     } for req in slot_data.mat_return
@@ -213,8 +206,17 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
             'msg': 'employee cannot send return request'
         }
 
+    # if already requested earlier
+    already_req_slot = db.query(models.ReturnSlot).filter(
+        models.ReturnSlot.req_slot_id == reqs.req_slot_id).first()
+    if already_req_slot:
+        return {
+            'status': "400",
+            'msg': 'already requested once'
+        }
+
     new_slot = models.ReturnSlot(
-        remarks=reqs.remarks, ret_by=reqs.req_by,  req_slot_id=reqs.req_slot_id)
+        remarks=reqs.remarks, ret_by=reqs.req_by, req_slot_id=reqs.req_slot_id)
     db.add(new_slot)
     db.commit()
     db.refresh(new_slot)
@@ -222,7 +224,7 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
     for item in reqs.items:
         # updating production inventory
         invent_item = db.query(models.PManagerMatInventory).filter(
-            models.PManagerMatInventory.m_id == item.id).first()
+            models.PManagerMatInventory.m_id == item.mat_id).first()
         if invent_item and invent_item.avail_qty >= item.qty:
             invent_item.avail_qty -= item.qty
 
@@ -231,22 +233,23 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
                 'status': "400",
                 'msg': 'insufficient quantity'
             }
+
     db.commit()
 
     for item in reqs.items:
         # updating buffer inventory
         invent_item = db.query(models.BufferRawMaterialInventory).filter(
-            models.BufferRawMaterialInventory.m_id == item.id).first()
+            models.BufferRawMaterialInventory.m_id == item.mat_id).first()
         if invent_item:
             invent_item.avail_qty += item.qty
         else:
             new_inv_item = models.BufferRawMaterialInventory(
-                m_id=item.id, avail_qty=item.qty)
+                m_id=item.mat_id, avail_qty=item.qty)
             db.add(new_inv_item)
 
         # creating return requestion for each material
         new_return_req = models.MaterialReturn(
-            m_id=item.id, qty_ret=item.qty, slot_id=new_slot.slot_id)
+            m_id=item.mat_id, req_id=item.req_id, qty_ret=item.qty, slot_id=new_slot.slot_id)
 
         db.add(new_return_req)
     db.commit()
@@ -277,6 +280,8 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
             'materials_return': [
                 {
                     'ret_id': req.ret_id,
+                    'qty_req': req.requisition.qty_req,
+                    'qty_issued': req.requisition.issue_qty,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in slot_data[0].mat_return
@@ -292,7 +297,7 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
 
     for item in reqs.items:
         inventory = db.query(models.PManagerMatInventory).filter(
-            models.PManagerMatInventory.m_id == item.id).first()
+            models.PManagerMatInventory.m_id == item.mat_id).first()
         if inventory:
             inventory.avail_qty -= item.qty
 

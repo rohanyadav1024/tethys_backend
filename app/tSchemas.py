@@ -66,9 +66,14 @@ class AcceptBatch(BatchData):
 # class IssuedOut(Issued):
 #     issue_id : int
 #     issue_time : datetime
+    
+class RetMat(BaseModel):
+    req_id : int
+    mat_id : int
+    qty : int
 
 class ReturnIn(BaseModel):
-    items : List[ReqMat]
+    items : List[RetMat]
     req_slot_id: int
     req_by : int
     remarks: Optional[str] = None
