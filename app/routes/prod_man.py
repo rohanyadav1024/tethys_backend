@@ -60,7 +60,7 @@ def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get
                 'slot_id': slot_data[0].slot_id,
                 'req_time': slot_data[0].req_time,
                 'remarks': slot_data[0].remarks,
-
+                'issue_status': slot_data[0].issue_status,
                 'issue_time': slot_data[0].issue_time,
                 'issue_by': {
                     "id": slot_data[1].id,

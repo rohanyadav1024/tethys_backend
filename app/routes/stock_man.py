@@ -46,6 +46,7 @@ def get_all_requisition(db: Session = Depends(get_db)):
             'req_time': slot_data[0].req_time,
             'remarks': slot_data[0].remarks,
             'issue_status': slot_data[0].issue_status,
+            'issue_time': slot_data[0].issue_time,
             'req_by': {
                 "id": slot_data[1].id,
                 "name": slot_data[1].name,
@@ -94,7 +95,7 @@ def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_
             'req_time': slot_data.req_time,
             'remarks': slot_data.remarks,
             'issue_status': slot_data.issue_status,
-
+            'issue_time': slot_data[0].issue_time,
             'req_by': {
                 "id": emp.id,
                 "name": emp.name,
@@ -245,9 +246,9 @@ def issue_requisitions(reqs: tSchemas.IssueReq, db: Session = Depends(get_db)):
         inventory.avail_qty -= req.qty
 
         # db updations
-        req_query.issue_qty += req.qty
-        if req_query.qty_req != req.qty:
+        if req_query.qty_req - req_query.issue_qty > req.qty: #remaining qty more than issue qty
             iscomplete = False
+        req_query.issue_qty += req.qty
 
         # production inventory
         invent_item = db.query(models.PManagerMatInventory).filter(models.PManagerMatInventory.m_id == req_query.m_id).first()
