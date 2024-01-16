@@ -77,7 +77,7 @@ def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get
                         'req_id': req.req_id,
                         'qty_req': req.qty_req,
                         'qty_issued': req.issue_qty,
-                        'qty_ret': req.mat_return.qty_ret if req.mat_return else 0,
+                        'qty_ret': req.mat_return.qty_ret if hasattr(req.mat_return, "qty_ret") else 0,
                         'mat_details': req.materials,
                     } for req in slot_data[0].requisition
                 ]
