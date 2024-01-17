@@ -175,6 +175,7 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
         'data': [
             {
                 'slot_id': slot_data.slot_id,
+                'req_slot_id': slot_data.req_slot_id,
                 'ret_time': slot_data.ret_time,
                 'remarks': slot_data.remarks,
                 'approved': slot_data.approved,
@@ -311,7 +312,7 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
 
     return {
         'status': "200",
-        'msg': 'material removed successfully'
+        'msg': 'material reduced successfully'
     }
 
 
@@ -319,45 +320,32 @@ router2 = APIRouter(prefix='/pmanager', tags=["ProductionManager (Product)"])
 
 
 # for manufactured products
-@router2.post("/create/product",
+@router2.post("/handover/id",
               #  response_model=tSchemas.RequisitionOut,
               status_code=status.HTTP_200_OK)
-def handover_batch(handovers: tSchemas.BatchesIn, db: Session = Depends(get_db)):
+def get_handover_req_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_db)):
     emp_query = db.query(models.Employees).filter(
-        models.Employees.id == handovers.hand_by).first()
+        models.Employees.id == emp.emp_id).first()
 
     if not emp_query:
         return {
             'status': "400",
-            'msg': 'employee cannot send request'
+            'msg': 'employee does not exist'
         }
 
-    new_batch = models.Batches(
-        remarks=handovers.remarks, handover_by=handovers.hand_by, req_slot_id=handovers.req_slot_id)
-    db.add(new_batch)
-    db.commit()
-    db.refresh(new_batch)
-
-    for prod in handovers.prods:
-        new_handover = models.Prod_Handover(
-            p_name=prod.p_name, qty=prod.qty, batch_id=new_batch.batch_id)
-
-        db.add(new_handover)
-        db.commit()
-        db.refresh(new_handover)
-
-    batch_data = db.query(models.Batches, models.Employees).filter(models.Batches.batch_id == new_batch.batch_id).join(
-        models.Employees, models.Employees.id == models.Batches.handover_by).first()
+    batch_data_query = db.query(models.Batches, models.Employees).filter(models.Batches.handover_by == emp.emp_id).join(
+        models.Employees, models.Employees.id == models.Batches.handover_by).all()
 
     return {
         'status': "200",
-        'msg': "successfully posted handover requests",
-        'data': {
+        'msg': "successfully fetched handover requests",
+        'data': [{
             'batch_id': batch_data[0].batch_id,
-            'req_slot_id': batch_data[0].req_slot_id,
             'mfg': batch_data[0].mfg,
             'remarks': batch_data[0].remarks,
             'is_recieved': batch_data[0].is_recieved,
+            'recieved_time': batch_data[0].recieved_time,
+            'recieved_by': batch_data[0].recieved_by,
 
             'handover_by': {
                 "id": batch_data[1].id,
@@ -372,7 +360,70 @@ def handover_batch(handovers: tSchemas.BatchesIn, db: Session = Depends(get_db))
             'handovers': [
                 {
                     'handover_id': handover.handover_id,
-                    'product_name': handover.p_name,
+                    'product': handover.products,
+                    'qty_req': handover.qty,
+                } for handover in batch_data[0].prod_handover
+            ]
+        } for batch_data in batch_data_query
+        ]
+    }
+
+
+@router2.post("/create/product",
+              #  response_model=tSchemas.RequisitionOut,
+              status_code=status.HTTP_200_OK)
+def handover_batch(handovers: tSchemas.BatchesIn, db: Session = Depends(get_db)):
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == handovers.hand_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot send request'
+        }
+
+    new_batch = models.Batches(
+        remarks=handovers.remarks, handover_by=handovers.hand_by)
+    db.add(new_batch)
+    db.commit()
+    db.refresh(new_batch)
+
+    for prod in handovers.prods:
+        new_handover = models.Prod_Handover(
+            prod_id=prod.prod_id, qty=prod.qty, batch_id=new_batch.batch_id)
+
+        db.add(new_handover)
+        db.commit()
+        db.refresh(new_handover)
+
+    batch_data = db.query(models.Batches, models.Employees).filter(models.Batches.batch_id == new_batch.batch_id).join(
+        models.Employees, models.Employees.id == models.Batches.handover_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully posted handover requests",
+        'data': {
+            'batch_id': batch_data[0].batch_id,
+            'mfg': batch_data[0].mfg,
+            'remarks': batch_data[0].remarks,
+            'is_recieved': batch_data[0].is_recieved,
+            'recieved_time': batch_data[0].recieved_time,
+            'recieved_by': batch_data[0].recieved_by,
+
+            'handover_by': {
+                "id": batch_data[1].id,
+                "name": batch_data[1].name,
+                "email": batch_data[1].email,
+                "role": batch_data[1].role,
+                "phone": batch_data[1].phone,
+                "created_at": batch_data[1].created_at,
+                "is_active": batch_data[1].is_active,
+            },
+
+            'handovers': [
+                {
+                    'handover_id': handover.handover_id,
+                    'product': handover.products,
                     'qty_req': handover.qty,
                 } for handover in batch_data[0].prod_handover
             ]

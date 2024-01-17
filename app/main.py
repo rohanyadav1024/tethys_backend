@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine
 from . import models
-from .routes import auth, employees, owner, otp, requests, prod_man, stock_man, material, gatekeeper
+from .routes import auth, employees, owner, otp, requests, prod_man, stock_man, material,products, gatekeeper
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -36,6 +36,7 @@ app.include_router(otp.router)
 app.include_router(requests.router)
 
 app.include_router(material.router)
+app.include_router(products.router)
 app.include_router(prod_man.router)
 app.include_router(prod_man.router2)
 app.include_router(stock_man.router)

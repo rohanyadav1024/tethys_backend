@@ -5,7 +5,7 @@ from typing import List
 from .. import tSchemas, models
 from ..database import get_db
 
-router = APIRouter(prefix='/material', tags=["Materials Available"])
+router = APIRouter(prefix='/products', tags=["Products Available"])
 
 # materials = {
 # 1 : Raw Material
@@ -27,24 +27,25 @@ router = APIRouter(prefix='/material', tags=["Materials Available"])
 
 
 @router.get("/",
-            response_model=tSchemas.MaterialListOut,
+            response_model=tSchemas.ProductListOut,
             status_code=status.HTTP_200_OK)
-def get_materials_list(db: Session = Depends(get_db)):
+def get_products_list(db: Session = Depends(get_db)):
 
-    materials = db.query(models.Material).all()
+    materials = db.query(models.Products).all()
 
     return {
         "status": "200",
-        'msg' : "successfully fetched data",
+        'msg': "successfully fetched data",
         "data": materials
     }
 
+
 @router.post('/create')
-def add_material(mats: List[tSchemas.MaterialIn], db: Session = Depends(get_db)):
+def add_product(mats: List[tSchemas.ProductIn], db: Session = Depends(get_db)):
 
     materials = []
     for mat in mats:
-        new_mat = models.Material(material=mat.material, umo=mat.umo, g_no=mat.g_no)
+        new_mat = models.Material(product=mat.product)
 
         materials.append(new_mat)
         db.add(new_mat)
@@ -53,26 +54,25 @@ def add_material(mats: List[tSchemas.MaterialIn], db: Session = Depends(get_db))
     for material in materials:
         db.refresh(material)
 
-    return{
-        'status' : '200',
+    return {
+        'status': '200',
         'msg': f'{len(materials)} records added successfully!',
-        'data' : materials
+        'data': materials
     }
 
 
 @router.delete('/delete')
-def add_material(mat :tSchemas.MaterialId, db: Session = Depends(get_db)):
+def remove_product(mat: tSchemas.ProductId, db: Session = Depends(get_db)):
 
-    db_mat = db.query(models.Material).filter(models.Material.id == mat.id)
+    db_mat = db.query(models.Products).filter(models.Products.id == mat.id)
 
     if db_mat.first() is None:
-        return {'status':'400','msg':f"No record found with id '{mat}'"}
-    
-    db_mat.delete(synchronize_session = False)
+        return {'status': '400', 'msg': f"No record found with id '{mat}'"}
+
+    db_mat.delete(synchronize_session=False)
     db.commit()
 
-    return{
-        'status' : '200',
-        'msg' : 'deleted successfully',
+    return {
+        'status': '200',
+        'msg': 'deleted successfully',
     }
-    
