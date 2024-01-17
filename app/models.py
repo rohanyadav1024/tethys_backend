@@ -18,6 +18,10 @@ class Employees(Base):
 
     # def as_dict(self):
     #     return {col.name: getattr(self, col.name) for col in self.__table__.columns if col.name != 'password'}
+    # log_entries_emp1 = relationship(
+    #     'LogEntries', foreign_keys='LogEntries.emp1_id', back_populates='emp1', uselist=True)
+    # log_entries_emp2 = relationship(
+    #     'LogEntries', foreign_keys='LogEntries.emp2_id', back_populates='emp2', uselist=True)
 
     __allow_unmapped__ = True
 
@@ -67,6 +71,7 @@ class Material(Base):
     requisition = relationship("Requisition", back_populates="materials")
     mat_return = relationship("MaterialReturn", back_populates="materials")
     orders = relationship("Orders", back_populates="materials")
+    log_sub_entries = relationship("LogSubEntries", back_populates="materials")
 
 
 class RawMaterialInventory(Base):
@@ -113,7 +118,6 @@ class Slot(Base):
     requisition = relationship(
         "Requisition", back_populates="slots", cascade='all, delete-orphan')
     r_slots = relationship("ReturnSlot", back_populates="slots")
-    batches = relationship("Batches", back_populates="slots")
     __allow_unmapped__ = True
 
 
@@ -163,7 +167,8 @@ class MaterialReturn(Base):
                     nullable=False, autoincrement=True)
     slot_id = Column(Integer, ForeignKey(
         "r_slots.slot_id", ondelete='CASCADE'), nullable=False)
-    req_id = Column(Integer, ForeignKey("requisition.req_id")) #for requisitions mapping
+    # for requisitions mapping
+    req_id = Column(Integer, ForeignKey("requisition.req_id"))
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_ret = Column(Integer, nullable=False)
 
@@ -179,8 +184,6 @@ class Batches(Base):
 
     batch_id = Column(Integer, primary_key=True,
                       nullable=False, autoincrement=True)
-    req_slot_id = Column(Integer, ForeignKey("slots.slot_id"), nullable=False)
-
     remarks = Column(String(255), nullable=True)
     handover_by = Column(Integer, ForeignKey("employees.id"), nullable=False)
     is_recieved = Column(Boolean, nullable=False, default=False)
@@ -192,7 +195,6 @@ class Batches(Base):
 
     prod_handover = relationship(
         "Prod_Handover", back_populates="batches", cascade='all, delete-orphan')
-    slots = relationship("Slot", back_populates="batches")
 
     __allow_unmapped__ = True
 
@@ -204,9 +206,10 @@ class Prod_Handover(Base):
                          nullable=False, autoincrement=True)
     batch_id = Column(Integer, ForeignKey(
         "batches.batch_id", ondelete='CASCADE'), nullable=False)
-    p_name = Column(String(255), nullable=False)
+    prod_id = Column(Integer, ForeignKey("products.id"))
     qty = Column(Integer, nullable=False)
 
+    products = relationship("Products", back_populates="prod_handover")
     batches = relationship("Batches", back_populates="prod_handover")
 
     __allow_unmapped__ = True
@@ -335,26 +338,72 @@ class Consignments(Base):
 
     cg_id = Column(Integer, primary_key=True,
                    nullable=False, autoincrement=True)
-    p_name = Column(String(255), nullable=False)
+    # p_name = Column(String(255), nullable=False)
+    prod_id = Column(Integer, ForeignKey("products.id"))
     qty = Column(Integer, nullable=False)
     checked_qty = Column(Integer, nullable=False, server_default="0")
 
     dis_id = Column(Integer, ForeignKey(
         "dis_details.dis_id", ondelete='CASCADE'), nullable=True)
 
+    products = relationship("Products", back_populates="consignments")
     dis_details = relationship("Dispatches", back_populates="consignments")
 
     __allow_unmapped__ = True
 
-# class Products(Base):
-#     __tablename__ = "man_prod"
 
-#     man_id = Column(Integer, primary_key=True,
-#                     nullable=False, autoincrement=True)
-#     product = Column(String(255), nullable=False)
-#     qty = Column(Integer, nullable=False)
-#     remarks = Column(String(255), nullable=True)
-#     mfg = Column(TIMESTAMP(timezone=True), nullable=False,
-#                  server_default=text('now()'))
-#     dis_id = Column(Integer, ForeignKey("dis_details.dis_id"), nullable=True)
-#     __allow_unmapped__ = True
+class Products(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
+    product = Column(String(255), nullable=False)
+
+    log_sub_entries = relationship("LogSubEntries", back_populates="products")
+    prod_handover = relationship("Prod_Handover", back_populates="products")
+    consignments = relationship("Consignments", back_populates="products")
+    __allow_unmapped__ = True
+
+
+# History DATA for logs
+class LogEntries(Base):
+    __tablename__ = "log_entries"
+
+    log_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    type_id = Column(Integer, nullable=False)
+    slot_id = Column(Integer, nullable=False)
+    emp1_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    emp2_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    update_time = Column(TIMESTAMP(timezone=True), nullable=True)
+    status = Column(Integer, nullable=False)
+    map_id = Column(Integer, ForeignKey('log_entries.log_id'), nullable=True)
+
+    log_sub_entries = relationship("LogSubEntries", back_populates="log_entries")
+
+    mapped_entries = relationship('LogEntries', remote_side=[
+                                  log_id])  # for self join relationship
+    # emp1 = relationship('Employees', foreign_keys=[
+    #                     emp1_id], backref='log_entries_emp1', uselist=False)
+    # emp2 = relationship('Employees', foreign_keys=[
+    #                     emp2_id], backref='log_entries_emp2', uselist=False)
+
+    __allow_unmapped__ = True
+
+
+class LogSubEntries(Base):
+    __tablename__ = "log_sub_entries"
+
+    entry_id = Column(Integer, primary_key=True,
+                      nullable=False, autoincrement=True)
+    # type_id = Column(Integer, nullable=False)
+    log_id = Column(Integer, ForeignKey("log_entries.log_id"))
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    prod_id = Column(Integer, ForeignKey("products.id")) #to be a foriegn key
+    qty = Column(Integer, nullable=False)
+    entry_time = Column(TIMESTAMP(timezone=True),
+                        nullable=False, server_default=text('now()'))
+
+    materials = relationship("Material", back_populates="log_sub_entries")
+    products = relationship("Products", back_populates="log_sub_entries")
+    log_entries = relationship("LogEntries", back_populates="log_sub_entries")
+    __allow_unmapped__ = True

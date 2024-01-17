@@ -140,7 +140,7 @@ def get_all_consignments(db: Session = Depends(get_db)):
             'inv_value': dis_data[0].inv_value,
             'recv_time': dis_data[0].recv_time,
             'checkout': dis_data[0].checkout,
-            'checked_by' : dis_data[0].checked_by,
+            # 'checked_by' : dis_data[0].checked_by,
 
             'dis_by': {
                 "id": dis_data[1].id,
@@ -152,14 +152,14 @@ def get_all_consignments(db: Session = Depends(get_db)):
                 "is_active": dis_data[1].is_active,
             },
 
-            'driver_detials' : dis_data[0].drivers,
+            'driver_details' : dis_data[0].drivers,
             'vehicle': dis_data[0].transports,
 
             'consignments': [
                 {
                     'consignment_id': consign.cg_id,
+                    'product': consign.products,
                     'qty': consign.qty,
-                    'product_name': consign.p_name,
                     'checked_qty': consign.checked_qty,
                 } for consign in dis_data[0].consignments
             ]
@@ -226,8 +226,8 @@ def check_consignments(checks: tSchemas.CheckConsignments,
             'consignments': [
                 {
                     'consignment_id': consign.cg_id,
+                    'products': consign.products,
                     'qty': consign.qty,
-                    'product_name': consign.p_name,
                     'checked_qty': consign.checked_qty,
                 } for consign in dis_data.consignments
             ]
