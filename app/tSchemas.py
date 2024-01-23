@@ -102,13 +102,13 @@ class AcceptBatch(BatchData):
 
 class RetMat(BaseModel):
     req_id: int
-    mat_id: int
+    # mat_id: int
     qty: int
 
 
 class ReturnIn(BaseModel):
     items: List[RetMat]
-    req_slot_id: int
+    # req_slot_id: int
     req_by: int
     remarks: Optional[str] = None
 
