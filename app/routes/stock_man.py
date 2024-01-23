@@ -397,6 +397,7 @@ def approve_returns(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
             db.add(new_inv_item)
 
     slot_data.approved = True
+    
 
     db.commit()
 

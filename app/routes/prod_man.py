@@ -296,9 +296,39 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
              status_code=status.HTTP_200_OK)
 def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)):
 
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == reqs.req_by).first()
+
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee cannot consume'
+        }
+
     for item in reqs.items:
+        # update db entry of requisitions
+        req = db.query(models.Requisition).filter(
+            models.Requisition.req_id == item.req_id).first()
+        if not req:
+            return {
+                'status': "400",
+                'msg': f'requisition not available for id {item.req_id}'
+            }
+
+        if req.issue_qty < item.qty:
+            return {
+                'status': "400",
+                'msg': f'Can not consume more than issued quantity for id {item.req_id}'
+            }
+
+        else:
+            # reduced from both to balance them
+            req.qty_req -= item.qty
+            req.issue_qty -= item.qty
+
+        # update inventory
         inventory = db.query(models.PManagerMatInventory).filter(
-            models.PManagerMatInventory.m_id == item.mat_id).first()
+            models.PManagerMatInventory.m_id == req.m_id).first()
         if inventory:
             inventory.avail_qty -= item.qty
 
@@ -312,7 +342,7 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
 
     return {
         'status': "200",
-        'msg': 'material reduced successfully'
+        'msg': 'material consumed successfully'
     }
 
 

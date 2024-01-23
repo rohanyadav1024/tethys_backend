@@ -45,7 +45,7 @@ def add_product(mats: List[tSchemas.ProductIn], db: Session = Depends(get_db)):
 
     materials = []
     for mat in mats:
-        new_mat = models.Material(product=mat.product)
+        new_mat = models.Products(product=mat.product)
 
         materials.append(new_mat)
         db.add(new_mat)
