@@ -77,7 +77,8 @@ def get_requisition_data_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get
                         'req_id': req.req_id,
                         'qty_req': req.qty_req,
                         'qty_issued': req.issue_qty,
-                        'qty_ret': req.mat_return.qty_ret if hasattr(req.mat_return, "qty_ret") else 0,
+                        'qty_consumed': req.consum_qty,
+
                         'mat_details': req.materials,
                     } for req in slot_data[0].requisition
                 ]
@@ -139,6 +140,8 @@ def create_requisition(reqs: tSchemas.RequisitionIn, db: Session = Depends(get_d
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
                     'qty_issued': req.issue_qty,
+                    'qty_consumed': req.consum_qty,
+
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
             ]
@@ -183,8 +186,9 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
                 'materials_return': [
                     {
                         'ret_id': req.ret_id,
-                        'qty_req': req.requisition.qty_req,
-                        'qty_issued': req.requisition.issue_qty,
+                        'qty_req': req.history_requisition.qty_req,
+                        'qty_issued': req.history_requisition.issue_qty,
+                        'qty_consumed': req.history_requisition.consum_qty,
                         'qty_ret': req.qty_ret,
                         'mat_details': req.materials,
                     } for req in slot_data.mat_return
@@ -200,34 +204,26 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
 def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)):
     emp_query = db.query(models.Employees).filter(
         models.Employees.id == reqs.req_by).first()
-
     if not emp_query:
         return {
             'status': "400",
             'msg': 'employee cannot send return request'
         }
 
-    # if already requested earlier
-    already_req_slot = db.query(models.ReturnSlot).filter(
-        models.ReturnSlot.req_slot_id == reqs.req_slot_id).first()
-    if already_req_slot:
-        return {
-            'status': "400",
-            'msg': 'already requested once'
-        }
-
-    new_slot = models.ReturnSlot(
-        remarks=reqs.remarks, ret_by=reqs.req_by, req_slot_id=reqs.req_slot_id)
-    db.add(new_slot)
-    db.commit()
-    db.refresh(new_slot)
-
+    # checking for integrity constraints
     for item in reqs.items:
+        req_query = db.query(models.Requisition).filter(
+            models.Requisition.req_id == item.req_id).first()
+
         # updating production inventory
         invent_item = db.query(models.PManagerMatInventory).filter(
             models.PManagerMatInventory.m_id == item.mat_id).first()
-        if invent_item and invent_item.avail_qty >= item.qty:
-            invent_item.avail_qty -= item.qty
+
+        if invent_item and invent_item.avail_qty >= req_query.issue_qty - req_query.consum_qty:
+            # consumption will be reduced by mat remain for consumption
+            invent_item.avail_qty -= (req_query.issue_qty -
+                                      req_query.consum_qty)
+            req_query.consum_qty = (req_query.issue_qty - item.qty)
 
         else:
             return {
@@ -235,7 +231,12 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
                 'msg': 'insufficient quantity'
             }
 
+    # creating Return slot before completing requisition
+    new_slot = models.ReturnSlot(
+        remarks=reqs.remarks, ret_by=reqs.req_by)
+    db.add(new_slot)
     db.commit()
+    db.refresh(new_slot)
 
     for item in reqs.items:
         # updating buffer inventory
@@ -253,6 +254,49 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
             m_id=item.mat_id, req_id=item.req_id, qty_ret=item.qty, slot_id=new_slot.slot_id)
 
         db.add(new_return_req)
+    db.commit()
+
+    # delete requisition data after creating returns
+    old_req_slot_data = db.query(models.Slot).filter(
+        models.Slot.slot_id == reqs.req_slot_id).first()
+
+    if not old_req_slot_data:
+        return {
+            'status': "400",
+            'msg': 'requisition slot not available'
+        }
+
+    # delete requisition and slot from database and create history records
+    new_hist_req_slot = models.HistoryReqSlot(
+        issued_by=old_req_slot_data.issued_by,
+        req_by=old_req_slot_data.req_by,
+        req_time=old_req_slot_data.req_time,
+        issue_time=old_req_slot_data.issue_time,
+        issue_status=old_req_slot_data.issue_status,
+        remarks=old_req_slot_data.remarks)
+
+    db.add(new_hist_req_slot)
+    db.commit()
+    db.refresh(new_hist_req_slot)
+
+    # updating req slot id in return variable
+    new_slot.req_slot_id = new_hist_req_slot.slot_id
+
+    for req in old_req_slot_data.requisition:
+        # perform op to move from req to history_req
+        new_hist_req = models.HistoryRequisition(
+            m_id=req.m_id,
+            qty_req=req.qty_req,
+            issue_qty=req.issue_qty,
+            consum_qty=req.consum_qty,
+            slot_id=new_hist_req_slot.slot_id,
+        )
+        # remove the requisition list and add it to History Requisitions
+        db.add(new_hist_req)
+        db.delete(req)
+        db.commit()
+
+    db.delete(old_req_slot_data)  # delete old data
     db.commit()
 
     slot_data = db.query(models.ReturnSlot, models.Employees).filter(models.ReturnSlot.slot_id == new_slot.slot_id).join(
@@ -283,6 +327,8 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
                     'ret_id': req.ret_id,
                     'qty_req': req.requisition.qty_req,
                     'qty_issued': req.requisition.issue_qty,
+                    'qty_consumed': req.requisition.consum_qty,
+                    
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in slot_data[0].mat_return
@@ -291,13 +337,13 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
     }
 
 
-@router.post("/remove",
+@router.post("/update",
              #  response_model=tSchemas.RequisitionOut,
              status_code=status.HTTP_200_OK)
-def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)):
+def update_used_material(consump:tSchemas.UpdateMatIn, db: Session = Depends(get_db)):
 
     emp_query = db.query(models.Employees).filter(
-        models.Employees.id == reqs.req_by).first()
+        models.Employees.id == consump.upd_by).first()
 
     if not emp_query:
         return {
@@ -305,7 +351,7 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
             'msg': 'employee cannot consume'
         }
 
-    for item in reqs.items:
+    for item in consump.items:
         # update db entry of requisitions
         req = db.query(models.Requisition).filter(
             models.Requisition.req_id == item.req_id).first()
@@ -315,16 +361,15 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
                 'msg': f'requisition not available for id {item.req_id}'
             }
 
-        if req.issue_qty < item.qty:
+        if (req.issue_qty - req.consum_qty) < item.qty:
             return {
                 'status': "400",
-                'msg': f'Can not consume more than issued quantity for id {item.req_id}'
+                'msg': f'Can not consume more than {req.issue_qty - req.consum_qty} quantity for id {item.req_id}'
             }
 
         else:
             # reduced from both to balance them
-            req.qty_req -= item.qty
-            req.issue_qty -= item.qty
+            req.consum_qty += item.qty
 
         # update inventory
         inventory = db.query(models.PManagerMatInventory).filter(
@@ -344,6 +389,102 @@ def update_used_material(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db))
         'status': "200",
         'msg': 'material consumed successfully'
     }
+
+
+@router.post("/complete/req")
+def complete_req_by_slotId(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
+
+    # check for emp auth
+    emp_query = db.query(models.Employees).filter(
+        models.Employees.id == slot.issue_by).first()
+    if not emp_query:
+        return {
+            'status': "400",
+            'msg': 'employee can not complete requisition'
+        }
+
+    slot_data = db.query(models.Slot).filter(
+        models.Slot.slot_id == slot.slot_id).first()
+    if not slot_data:
+        return {
+            'status': "400",
+            'msg': "slot not available",
+        }
+
+    # creation of new hist slot
+    new_hist_slot = models.HistoryReqSlot(
+        issued_by=slot_data.issued_by,
+        req_by=slot_data.req_by,
+        req_time=slot_data.req_time,
+        issue_time=slot_data.issue_time,
+        issue_status=slot_data.issue_status,
+        remarks=slot_data.remarks)
+
+    db.add(new_hist_slot)
+    db.commit()
+    db.refresh(new_hist_slot)
+
+    for req in slot_data.requisition:
+        # perform op to move from req to history_req
+        new_hist_req = models.HistoryRequisition(
+            m_id=req.m_id,
+            qty_req=req.qty_req,
+            issue_qty=req.issue_qty,
+            consum_qty=req.consum_qty,
+            slot_id=new_hist_slot.slot_id,
+        )
+        # update quantity consumed if not updated by prod manager
+        # in case if prod manager has not returned total issue qty is used
+        new_hist_req.consum_qty = req.issue_qty
+
+        # remove the requisition list and add it to History Requisitions
+        db.add(new_hist_req)
+        db.delete(req)
+        db.commit()
+
+    db.delete(slot_data)  # delete old data
+    db.commit()
+
+    # his_slot_data = db.query(models.HistoryReqSlot, models.Employees).filter(models.HistoryReqSlot.slot_id == new_hist_slot.slot_id).join(
+    #     models.Employees, models.Employees.id == models.HistoryReqSlot.req_by).first()
+
+    return {
+        'status': "200",
+        'msg': "successfully completed requisitions",
+        # 'data': {
+        #     'slot_id': his_slot_data[0].slot_id,
+        #     'req_time': his_slot_data[0].req_time,
+        #     'complete_time': his_slot_data[0].comp_time,
+        #     'remarks': his_slot_data[0].remarks,
+        #     'issue_status': his_slot_data[0].issue_status,
+
+        #     'req_by': {
+        #         "id": his_slot_data[1].id,
+        #         "name": his_slot_data[1].name,
+        #         "email": his_slot_data[1].email,
+        #         "role": his_slot_data[1].role,
+        #         "phone": his_slot_data[1].phone,
+        #         "created_at": his_slot_data[1].created_at,
+        #         "is_active": his_slot_data[1].is_active,
+        #     },
+
+
+        #     'requisitions': [
+        #         {
+        #             'req_id': req.req_id,
+        #             'qty_req': req.qty_req,
+        #             'qty_issued': req.issue_qty,
+        #             'qty_consumed': req.consum_qty,
+        #             'mat_details': req.materials,
+        #         } for req in his_slot_data[0].history_requisition
+        #     ]
+        # }
+    }
+    # except Exception as e:
+    #     return {
+    #         'status': "400",
+    #         'msg': f"error occured {e}",
+    #     }
 
 
 router2 = APIRouter(prefix='/pmanager', tags=["ProductionManager (Product)"])

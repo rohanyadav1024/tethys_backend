@@ -73,6 +73,12 @@ class Material(Base):
     orders = relationship("Orders", back_populates="materials")
     log_sub_entries = relationship("LogSubEntries", back_populates="materials")
 
+    history_requisition = relationship(
+        "HistoryRequisition", back_populates="materials")
+    history_mat_return = relationship(
+        "HistoryMaterialReturn", back_populates="materials")
+    history_orders = relationship("HistoryOrders", back_populates="materials")
+
 
 class RawMaterialInventory(Base):
     __tablename__ = "raw_inventories"
@@ -131,6 +137,7 @@ class Requisition(Base):
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_req = Column(Integer, nullable=False)
 
+    consum_qty = Column(Integer, nullable=False, default=0)
     issue_qty = Column(Integer, nullable=False, default=0)
 
     materials = relationship("Material", back_populates="requisition")
@@ -146,7 +153,7 @@ class ReturnSlot(Base):
 
     slot_id = Column(Integer, primary_key=True,
                      nullable=False, autoincrement=True)
-    req_slot_id = Column(Integer, ForeignKey("slots.slot_id"), nullable=False)
+    req_slot_id = Column(Integer, ForeignKey("history_req_slots.slot_id", ondelete='SET NULL'), nullable=True)
     remarks = Column(String(255), nullable=True)
     ret_time = Column(TIMESTAMP(timezone=True),
                       nullable=False, server_default=text('now()'))
@@ -156,7 +163,7 @@ class ReturnSlot(Base):
 
     mat_return = relationship(
         "MaterialReturn", back_populates="r_slots", cascade='all, delete-orphan')
-    slots = relationship("Slot", back_populates="r_slots")
+    history_req_slots = relationship("HistoryReqSlot", back_populates="r_slots")
     __allow_unmapped__ = True
 
 
@@ -168,13 +175,13 @@ class MaterialReturn(Base):
     slot_id = Column(Integer, ForeignKey(
         "r_slots.slot_id", ondelete='CASCADE'), nullable=False)
     # for requisitions mapping
-    req_id = Column(Integer, ForeignKey("requisition.req_id"))
+    req_id = Column(Integer, ForeignKey("history_requisition.req_id", ondelete='SET NULL'))
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_ret = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="mat_return")
     r_slots = relationship("ReturnSlot", back_populates="mat_return")
-    requisition = relationship("Requisition", back_populates="mat_return")
+    history_requisition = relationship("HistoryRequisition", back_populates="mat_return")
 
     __allow_unmapped__ = True
 
@@ -261,23 +268,6 @@ class Orders(Base):
     __allow_unmapped__ = True
 
 
-# class Consignments(Base):
-#     __tablename__ = "consignment"
-
-#     cg_id = Column(Integer, primary_key=True,
-#                    nullable=False, autoincrement=True)
-#     remarks = Column(String(255), nullable=True)
-#     dis_id = Column(Integer, ForeignKey("dis_details.dis_id"), nullable=True)
-#     gk_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
-#     recv_time = Column(TIMESTAMP(timezone=True),
-#                        nullable=False, server_default=text('now()'))
-#     __allow_unmapped__ = True
-
-
-# # main tales for records
-# #for stock manageryy
-
-
 class Transports(Base):
     __tablename__ = "transports"
 
@@ -288,6 +278,8 @@ class Transports(Base):
     # place = Column(String(255), nullable=True)
 
     dis_details = relationship("Dispatches", back_populates="transports")
+    history_dis_details = relationship(
+        "HistoryDispatches", back_populates="transports")
 
     __allow_unmapped__ = True
 
@@ -302,6 +294,8 @@ class Drivers(Base):
     license_no = Column(String(25), nullable=True)
 
     dis_details = relationship("Dispatches", back_populates="drivers")
+    history_dis_details = relationship(
+        "HistoryDispatches", back_populates="drivers")
 
     __allow_unmapped__ = True
 
@@ -361,6 +355,11 @@ class Products(Base):
     log_sub_entries = relationship("LogSubEntries", back_populates="products")
     prod_handover = relationship("Prod_Handover", back_populates="products")
     consignments = relationship("Consignments", back_populates="products")
+
+    history_prod_handover = relationship(
+        "HistoryProd_Handover", back_populates="products")
+    history_consignments = relationship(
+        "HistoryConsignments", back_populates="products")
     __allow_unmapped__ = True
 
 
@@ -378,7 +377,8 @@ class LogEntries(Base):
     status = Column(Integer, nullable=False)
     map_id = Column(Integer, ForeignKey('log_entries.log_id'), nullable=True)
 
-    log_sub_entries = relationship("LogSubEntries", back_populates="log_entries")
+    log_sub_entries = relationship(
+        "LogSubEntries", back_populates="log_entries")
 
     mapped_entries = relationship('LogEntries', remote_side=[
                                   log_id])  # for self join relationship
@@ -398,7 +398,7 @@ class LogSubEntries(Base):
     # type_id = Column(Integer, nullable=False)
     log_id = Column(Integer, ForeignKey("log_entries.log_id"))
     m_id = Column(Integer, ForeignKey("materials.id"))
-    prod_id = Column(Integer, ForeignKey("products.id")) #to be a foriegn key
+    prod_id = Column(Integer, ForeignKey("products.id"))  # to be a foriegn key
     qty = Column(Integer, nullable=False)
     entry_time = Column(TIMESTAMP(timezone=True),
                         nullable=False, server_default=text('now()'))
@@ -406,4 +406,229 @@ class LogSubEntries(Base):
     materials = relationship("Material", back_populates="log_sub_entries")
     products = relationship("Products", back_populates="log_sub_entries")
     log_entries = relationship("LogEntries", back_populates="log_sub_entries")
+    __allow_unmapped__ = True
+
+
+# History transactions between prod and stock
+class HistoryReqSlot(Base):
+    __tablename__ = 'history_req_slots'
+
+    slot_id = Column(Integer, primary_key=True,
+                     nullable=False, autoincrement=True)
+    remarks = Column(String(255), nullable=True)
+    req_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    req_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    issued_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    issue_time = Column(TIMESTAMP(timezone=True),
+                        nullable=True)
+    issue_status = Column(Boolean, nullable=False, default=False)
+    comp_time = Column(TIMESTAMP(timezone=True),
+                       nullable=False, server_default=text('now()'))
+
+    r_slots = relationship(
+        "ReturnSlot", back_populates="history_req_slots")
+    
+    history_requisition = relationship(
+        "HistoryRequisition", back_populates="history_req_slots", cascade='all, delete-orphan')
+    history_r_slots = relationship(
+        "HistoryReturnSlot", back_populates="history_req_slots")
+    __allow_unmapped__ = True
+
+
+class HistoryRequisition(Base):
+    __tablename__ = "history_requisition"
+
+    req_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    slot_id = Column(Integer, ForeignKey(
+        "history_req_slots.slot_id", ondelete='CASCADE'), nullable=False)
+    m_id = Column(Integer, ForeignKey("materials.id"))
+
+    qty_req = Column(Integer, nullable=False)
+    consum_qty = Column(Integer, nullable=False, default=0)
+    issue_qty = Column(Integer, nullable=False, default=0)
+
+    materials = relationship("Material", back_populates="history_requisition")
+    mat_return = relationship(
+        "MaterialReturn", back_populates="history_requisition")
+    history_req_slots = relationship(
+        "HistoryReqSlot", back_populates="history_requisition")
+    history_mat_return = relationship(
+        "HistoryMaterialReturn", back_populates="history_requisition")
+
+    __allow_unmapped__ = True
+
+
+# for returning material
+class HistoryReturnSlot(Base):
+    __tablename__ = 'history_r_slots'
+
+    slot_id = Column(Integer, primary_key=True,
+                     nullable=False, autoincrement=True)
+    req_slot_id = Column(Integer, ForeignKey(
+        "history_req_slots.slot_id"), nullable=False)
+    remarks = Column(String(255), nullable=True)
+    ret_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False)
+
+    ret_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    approved = Column(Boolean, nullable=False, default=False)
+
+    history_mat_return = relationship(
+        "HistoryMaterialReturn", back_populates="history_r_slots", cascade='all, delete-orphan')
+    history_req_slots = relationship(
+        "HistoryReqSlot", back_populates="history_r_slots")
+    __allow_unmapped__ = True
+
+
+class HistoryMaterialReturn(Base):
+    __tablename__ = "history_mat_return"
+
+    ret_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    slot_id = Column(Integer, ForeignKey(
+        "history_r_slots.slot_id", ondelete='CASCADE'), nullable=False)
+    # for requisitions mapping
+    req_id = Column(Integer, ForeignKey("history_requisition.req_id"))
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    qty_ret = Column(Integer, nullable=False)
+
+    materials = relationship("Material", back_populates="history_mat_return")
+    history_r_slots = relationship(
+        "HistoryReturnSlot", back_populates="history_mat_return")
+    history_requisition = relationship(
+        "HistoryRequisition", back_populates="history_mat_return")
+
+    __allow_unmapped__ = True
+
+
+class HistoryBatches(Base):
+    __tablename__ = 'history_batches'
+
+    batch_id = Column(Integer, primary_key=True,
+                      nullable=False, autoincrement=True)
+    remarks = Column(String(255), nullable=True)
+    handover_by = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    is_recieved = Column(Boolean, nullable=False, default=False)
+    recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    recieved_time = Column(TIMESTAMP(timezone=True),
+                           nullable=True)
+    mfg = Column(TIMESTAMP(timezone=True), nullable=False,
+                 server_default=text('now()'))
+
+    history_prod_handover = relationship(
+        "HistoryProd_Handover", back_populates="history_batches", cascade='all, delete-orphan')
+
+    __allow_unmapped__ = True
+
+
+class HistoryProd_Handover(Base):
+    __tablename__ = "history_prod_handover"
+
+    handover_id = Column(Integer, primary_key=True,
+                         nullable=False, autoincrement=True)
+    batch_id = Column(Integer, ForeignKey(
+        "history_batches.batch_id", ondelete='CASCADE'), nullable=False)
+    prod_id = Column(Integer, ForeignKey("products.id"))
+    qty = Column(Integer, nullable=False)
+
+    products = relationship("Products", back_populates="history_prod_handover")
+    history_batches = relationship(
+        "HistoryBatches", back_populates="history_prod_handover")
+
+    __allow_unmapped__ = True
+
+
+class HistoryPurchases(Base):
+    __tablename__ = "history_purchases"
+
+    pur_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    supp_name = Column(String(255), nullable=True)
+    t_amount = Column(Double, nullable=False)
+    invoice = Column(String(50), nullable=False)
+    vehicle = Column(String(50), nullable=False)
+    pur_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+
+    remarks = Column(String(255), nullable=True)
+    pur_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    recieved_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    exp_date = Column(TIMESTAMP(timezone=True),
+                      nullable=True,)
+    recv_time = Column(TIMESTAMP(timezone=True),
+                       nullable=True,)
+    recieved = Column(Boolean, nullable=False, server_default="false")
+
+    history_orders = relationship(
+        "HistoryOrders", back_populates="history_purchases", cascade='all, delete-orphan')
+
+    __allow_unmapped__ = True
+
+
+class HistoryOrders(Base):
+    __tablename__ = "history_orders"
+
+    ord_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    m_id = Column(Integer, ForeignKey("materials.id"))
+    ord_qty = Column(Integer, nullable=False)
+    recieved_qty = Column(Integer, nullable=False, server_default="0")
+
+    pur_id = Column(Integer, ForeignKey(
+        "history_purchases.pur_id", ondelete='CASCADE'), nullable=True)
+
+    materials = relationship("Material", back_populates="history_orders")
+    history_purchases = relationship(
+        "HistoryPurchases", back_populates="history_orders")
+
+    __allow_unmapped__ = True
+
+
+class HistoryDispatches(Base):
+    __tablename__ = "history_dis_details"
+
+    dis_id = Column(Integer, primary_key=True,
+                    nullable=False, autoincrement=True)
+    buyer = Column(String(100), nullable=True)
+    invoice = Column(String(50), nullable=False)
+    inv_value = Column(Integer, nullable=False)
+    dis_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    checked_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
+
+    trans_id = Column(Integer, ForeignKey("transports.tran_id"), nullable=True)
+    driv_id = Column(Integer, ForeignKey("drivers.drv_id"), nullable=True)
+    dis_time = Column(TIMESTAMP(timezone=True),
+                      nullable=False, server_default=text('now()'))
+    recv_time = Column(TIMESTAMP(timezone=True),
+                       nullable=True,)
+    checkout = Column(Boolean, nullable=False, server_default="false")
+
+    history_consignments = relationship(
+        "HistoryConsignments", back_populates="history_dis_details", cascade='all, delete-orphan')
+    drivers = relationship("Drivers", back_populates="history_dis_details")
+    transports = relationship(
+        "Transports", back_populates="history_dis_details")
+
+    __allow_unmapped__ = True
+
+
+class HistoryConsignments(Base):
+    __tablename__ = "history_consignments"
+
+    cg_id = Column(Integer, primary_key=True,
+                   nullable=False, autoincrement=True)
+    # p_name = Column(String(255), nullable=False)
+    prod_id = Column(Integer, ForeignKey("products.id"))
+    qty = Column(Integer, nullable=False)
+    checked_qty = Column(Integer, nullable=False, server_default="0")
+
+    dis_id = Column(Integer, ForeignKey(
+        "history_dis_details.dis_id", ondelete='CASCADE'), nullable=True)
+
+    products = relationship("Products", back_populates="history_consignments")
+    history_dis_details = relationship(
+        "HistoryDispatches", back_populates="history_consignments")
+
     __allow_unmapped__ = True

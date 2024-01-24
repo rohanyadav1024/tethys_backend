@@ -62,6 +62,7 @@ def get_all_requisition(db: Session = Depends(get_db)):
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
                     'qty_issued': req.issue_qty,
+                    'qty_consumed': req.consum_qty,
                     'mat_details': req.materials,
                 } for req in slot_data[0].requisition
             ]
@@ -111,6 +112,7 @@ def get_requisitions_by_slot(slot: tSchemas.SlotData, db: Session = Depends(get_
                     'req_id': req.req_id,
                     'qty_req': req.qty_req,
                     'qty_issued': req.issue_qty,
+                    'qty_consumed': req.consum_qty,
                     'mat_details': req.materials,
                 } for req in reqs_data
             ]
@@ -342,8 +344,9 @@ def get_all_return_request(db: Session = Depends(get_db)):
             'materials_return': [
                 {
                     'ret_id': req.ret_id,
-                    'qty_req': req.requisition.qty_req,
-                    'qty_issued': req.requisition.issue_qty,
+                    'qty_req': req.history_requisition.qty_req,
+                    'qty_issued': req.history_requisition.issue_qty,
+                    'qty_consumed': req.history_requisition.consum_qty,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in slot_data[0].mat_return
@@ -397,9 +400,40 @@ def approve_returns(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
             db.add(new_inv_item)
 
     slot_data.approved = True
-    
-
     db.commit()
+    db.refresh(slot_data)
+
+
+
+    # to move return request from main table to history
+    new_hist_ret_slot = models.HistoryReturnSlot(
+        req_slot_id=slot_data.req_slot_id,
+        remarks=slot_data.remarks,
+        ret_time=slot_data.ret_time,
+        ret_by=slot_data.ret_by,
+        approved=slot_data.approved,
+       )
+    
+    db.add(new_hist_ret_slot)
+    db.commit()
+    db.refresh(new_hist_ret_slot)
+
+    for ret in slot_data.mat_return:
+        # perform op to move from req to history_req
+        new_hist_ret = models.HistoryMaterialReturn(
+            req_id=ret.req_id,
+            m_id=ret.m_id,
+            qty_ret=ret.qty_ret,
+            slot_id=new_hist_ret_slot.slot_id,
+        )
+        # remove the requisition list and add it to History Requisitions
+        db.add(new_hist_ret)
+        db.delete(ret)
+        db.commit()
+
+    db.delete(slot_data)  # delete old data
+    db.commit()
+
 
     return {
         'status': "200",
@@ -456,6 +490,37 @@ def deny_returns(slot: tSchemas.IssueSlot, db: Session = Depends(get_db)):
 
     db.delete(slot_data)
     db.commit()
+    db.refresh(slot_data)
+
+
+    # to move return request from main table to history
+    new_hist_ret_slot = models.HistoryReturnSlot(
+        req_slot_id=slot_data.req_slot_id,
+        remarks=slot_data.remarks,
+        ret_time=slot_data.ret_time,
+        ret_by=slot_data.ret_by,
+        approved=slot_data.approved,
+       )
+    
+    db.add(new_hist_ret_slot)
+    db.commit()
+    db.refresh(new_hist_ret_slot)
+
+    for ret in slot_data.mat_return:
+        # perform op to move from req to history_req
+        new_hist_ret = models.HistoryMaterialReturn(
+            req_id=ret.req_id,
+            m_id=ret.m_id,
+            qty_ret=ret.qty_ret,
+            slot_id=new_hist_ret_slot.slot_id,
+        )
+        # remove the requisition list and add it to History Requisitions
+        db.add(new_hist_ret)
+        db.delete(ret)
+        db.commit()
+
+    db.delete(slot_data)  # delete old data
+    db.commit()
 
     return {
         'status': "200",
@@ -505,8 +570,9 @@ def get_return_request_bySlot(slot: tSchemas.SlotData, db: Session = Depends(get
             'requisitions': [
                 {
                     'ret_id': req.ret_id,
-                    'qty_req': req.requisition.qty_req,
-                    'qty_issued': req.requisition.issue_qty,
+                    'qty_req': req.history_requisition.qty_req,
+                    'qty_issued': req.history_requisition.issue_qty,
+                    'qty_consumed': req.history_requisition.consum_qty,
                     'qty_ret': req.qty_ret,
                     'mat_details': req.materials,
                 } for req in reqs_data
