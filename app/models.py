@@ -123,7 +123,7 @@ class Slot(Base):
 
     requisition = relationship(
         "Requisition", back_populates="slots", cascade='all, delete-orphan')
-    r_slots = relationship("ReturnSlot", back_populates="slots")
+    # r_slots = relationship("ReturnSlot", back_populates="slots")
     __allow_unmapped__ = True
 
 
@@ -142,7 +142,7 @@ class Requisition(Base):
 
     materials = relationship("Material", back_populates="requisition")
     slots = relationship("Slot", back_populates="requisition")
-    mat_return = relationship("MaterialReturn", back_populates="requisition")
+    # mat_return = relationship("MaterialReturn", back_populates="requisition")
 
     __allow_unmapped__ = True
 
