@@ -142,7 +142,7 @@ class Requisition(Base):
 
     materials = relationship("Material", back_populates="requisition")
     slots = relationship("Slot", back_populates="requisition")
-    # mat_return = relationship("MaterialReturn", back_populates="requisition")
+    mat_return = relationship("MaterialReturn", back_populates="requisition")
 
     __allow_unmapped__ = True
 
@@ -153,7 +153,8 @@ class ReturnSlot(Base):
 
     slot_id = Column(Integer, primary_key=True,
                      nullable=False, autoincrement=True)
-    req_slot_id = Column(Integer, ForeignKey("history_req_slots.slot_id", ondelete='SET NULL'), nullable=True)
+    req_slot_id = Column(Integer, ForeignKey(
+        "history_req_slots.slot_id", ondelete='SET NULL'), nullable=True)
     remarks = Column(String(255), nullable=True)
     ret_time = Column(TIMESTAMP(timezone=True),
                       nullable=False, server_default=text('now()'))
@@ -163,7 +164,8 @@ class ReturnSlot(Base):
 
     mat_return = relationship(
         "MaterialReturn", back_populates="r_slots", cascade='all, delete-orphan')
-    history_req_slots = relationship("HistoryReqSlot", back_populates="r_slots")
+    history_req_slots = relationship(
+        "HistoryReqSlot", back_populates="r_slots")
     __allow_unmapped__ = True
 
 
@@ -174,14 +176,21 @@ class MaterialReturn(Base):
                     nullable=False, autoincrement=True)
     slot_id = Column(Integer, ForeignKey(
         "r_slots.slot_id", ondelete='CASCADE'), nullable=False)
+
     # for requisitions mapping
-    req_id = Column(Integer, ForeignKey("history_requisition.req_id", ondelete='SET NULL'))
+    old_req_id = Column(Integer, ForeignKey(
+        "requisition.req_id", ondelete='SET NULL'), nullable=True)
+    req_id = Column(Integer, ForeignKey(
+        "history_requisition.req_id", ondelete='SET NULL'), nullable=True)
     m_id = Column(Integer, ForeignKey("materials.id"))
     qty_ret = Column(Integer, nullable=False)
 
     materials = relationship("Material", back_populates="mat_return")
     r_slots = relationship("ReturnSlot", back_populates="mat_return")
-    history_requisition = relationship("HistoryRequisition", back_populates="mat_return")
+    requisition = relationship(
+        "Requisition", back_populates="mat_return")
+    history_requisition = relationship(
+        "HistoryRequisition", back_populates="mat_return")
 
     __allow_unmapped__ = True
 
@@ -428,7 +437,7 @@ class HistoryReqSlot(Base):
 
     r_slots = relationship(
         "ReturnSlot", back_populates="history_req_slots")
-    
+
     history_requisition = relationship(
         "HistoryRequisition", back_populates="history_req_slots", cascade='all, delete-orphan')
     history_r_slots = relationship(
