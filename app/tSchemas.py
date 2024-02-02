@@ -220,3 +220,11 @@ class CheckConsignments(BaseModel):
     dis_id: int
     checked_by: int
     consigns: List[GateConsignments]
+
+class GetHistoryReq(BaseModel):
+    emp_id: int
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    limit: Optional[int] = 10
+    offset: Optional[int] = 0
+
