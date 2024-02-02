@@ -164,7 +164,7 @@ def get_return_material_by_empID(emp: tSchemas.EmpID, db: Session = Depends(get_
         }
 
     slot_data_query = db.query(models.ReturnSlot).filter(
-        models.Slot.req_by == emp.emp_id).all()
+        models.ReturnSlot.ret_by == emp.emp_id).all()
 
     if not slot_data_query:
         return {
