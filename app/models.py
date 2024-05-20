@@ -107,6 +107,7 @@ class PManagerMatInventory(Base):
     materials = relationship("Material", back_populates="prod_raw_inventories")
 
 
+
 class Slot(Base):
     __tablename__ = 'slots'
 
@@ -213,6 +214,7 @@ class Batches(Base):
         "Prod_Handover", back_populates="batches", cascade='all, delete-orphan')
 
     __allow_unmapped__ = True
+
 
 
 class Prod_Handover(Base):
@@ -360,6 +362,7 @@ class Products(Base):
 
     id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     product = Column(String(255), nullable=False)
+    g_no = Column(Integer, nullable=False)
 
     log_sub_entries = relationship("LogSubEntries", back_populates="products")
     prod_handover = relationship("Prod_Handover", back_populates="products")
@@ -369,8 +372,37 @@ class Products(Base):
         "HistoryProd_Handover", back_populates="products")
     history_consignments = relationship(
         "HistoryConsignments", back_populates="products")
+    products_inventories = relationship(
+        "ProductsInventory", back_populates="products")
+    buff_products_inventories = relationship(
+        "BufferProductsInventory", back_populates="products")
+    prod_products_inventories = relationship(
+        "PManagerProductsInventory", back_populates="products")
     __allow_unmapped__ = True
 
+
+class ProductsInventory(Base):
+    __tablename__ = "products_inventories"
+    p_id = Column(Integer, ForeignKey("products.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    products = relationship("Products", back_populates="products_inventories")
+
+
+class BufferProductsInventory(Base):
+    __tablename__ = "buff_products_inventories"
+    p_id = Column(Integer, ForeignKey("products.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    products = relationship("Products", back_populates="buff_products_inventories")
+
+
+class PManagerProductsInventory(Base):
+    __tablename__ = "prod_products_inventories"
+    p_id = Column(Integer, ForeignKey("products.id"), primary_key=True)
+    avail_qty = Column(Integer, nullable=False)
+
+    products = relationship("Products", back_populates="prod_products_inventories")
 
 # History DATA for logs
 class LogEntries(Base):

@@ -238,7 +238,6 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
                 'status': "400",
                 'msg': 'insufficient quantity'
             }
-        
 
     # Step 1: create history requisition slot
     new_hist_req_slot = models.HistoryReqSlot(
@@ -271,7 +270,7 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
     # Step 3: create history return slot
     # creating Return slot
     new_slot = models.ReturnSlot(
-        remarks=reqs.remarks,req_slot_id = new_hist_req_slot.slot_id, ret_by=reqs.req_by)
+        remarks=reqs.remarks, req_slot_id=new_hist_req_slot.slot_id, ret_by=reqs.req_by)
     db.add(new_slot)
     db.commit()
     db.refresh(new_slot)
@@ -290,7 +289,8 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
             db.add(new_inv_item)
 
         # creating return requestion for each material
-        hist_req_query = db.query(models.HistoryRequisition).filter(models.HistoryRequisition.slot_id == new_hist_req_slot.slot_id and models.HistoryRequisition.m_id == item.mat_id).first()
+        hist_req_query = db.query(models.HistoryRequisition).filter(
+            models.HistoryRequisition.slot_id == new_hist_req_slot.slot_id and models.HistoryRequisition.m_id == item.mat_id).first()
         new_return_req = models.MaterialReturn(
             m_id=item.mat_id, old_req_id=item.req_id, req_id=hist_req_query.req_id, qty_ret=item.qty, slot_id=new_slot.slot_id)
         # new_return_req = models.MaterialReturn(
@@ -298,8 +298,6 @@ def create_return_request(reqs: tSchemas.ReturnIn, db: Session = Depends(get_db)
 
         db.add(new_return_req)
     db.commit()
-
-    
 
     db.delete(old_req_slot_data)  # delete old data
     db.commit()

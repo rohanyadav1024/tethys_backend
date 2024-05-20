@@ -32,6 +32,7 @@ class ProductId(BaseModel):
 
 class ProductIn(BaseModel):
     product: str
+    g_no: int
 
 
 class Product(ProductIn):
