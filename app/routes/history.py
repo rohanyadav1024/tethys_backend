@@ -104,19 +104,16 @@ def get_all_history_requisition(request: tSchemas.GetHistoryReq, db: Session = D
 
 @router.post("/returns",
              status_code=status.HTTP_200_OK)
-def get_all_history_requisition(request: tSchemas.GetHistoryReq, db: Session = Depends(get_db)):
+def get_all_history_return(request: tSchemas.GetHistoryReq, db: Session = Depends(get_db)):
 
     # Base query with join for owner and stock manager
-    EmployeesAlias = aliased(models.Employees)
-
     query = db.query(
         models.HistoryReturnSlot,
         models.Employees,
-        EmployeesAlias  # Use the alias here
     ).join(
         models.Employees,
         models.Employees.id == models.HistoryReturnSlot.ret_by
-    )
+    ).distinct(models.HistoryReturnSlot.slot_id)
 
     emp_query = db.query(models.Employees).filter(
         models.Employees.id == request.emp_id).first()
@@ -140,8 +137,8 @@ def get_all_history_requisition(request: tSchemas.GetHistoryReq, db: Session = D
         # Optionally apply ordering here if needed for this case
 
     # If start_date and end_date are not provided, apply default ordering
-    else:
-        query = query.order_by(desc(models.HistoryReturnSlot.ret_time))
+
+    query = query.order_by(desc(models.HistoryReturnSlot.ret_time))
 
     # Finally, apply limit and offset
     query = query.limit(request.limit).offset(request.offset * request.limit)

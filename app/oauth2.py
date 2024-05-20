@@ -32,7 +32,7 @@ json_oauth2_scheme = JSONOAuth2PasswordBearer(tokenUrl='login')
 
 def create_access_token(data : dict):
     to_encode = data.copy()
-    exp_time = int((datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)).timestamp())
+    exp_time = int((datetime.now() + timedelta(minutes=EXPIRE_MINUTES)).timestamp())
 
     to_encode.update({'expiry' : exp_time})
     encoded_jwt = jwt.encode(claims=to_encode, algorithm=ALGORITHM, key=SECRET_KEY)
