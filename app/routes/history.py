@@ -101,9 +101,7 @@ def get_all_history_requisition(request: tSchemas.GetHistoryReq, db: Session = D
         ]
     }
 
-
-@router.post("/returns",
-             status_code=status.HTTP_200_OK)
+@router.post("/returns", status_code=status.HTTP_200_OK)
 def get_all_history_return(request: tSchemas.GetHistoryReq, db: Session = Depends(get_db)):
 
     # Base query with join for owner and stock manager
@@ -134,11 +132,9 @@ def get_all_history_return(request: tSchemas.GetHistoryReq, db: Session = Depend
                 models.HistoryReturnSlot.ret_time <= request.end_date
             )
         )
-        # Optionally apply ordering here if needed for this case
 
-    # If start_date and end_date are not provided, apply default ordering
-
-    query = query.order_by(desc(models.HistoryReturnSlot.ret_time))
+    # Modify order by to ensure DISTINCT ON works correctly
+    query = query.order_by(models.HistoryReturnSlot.slot_id, desc(models.HistoryReturnSlot.ret_time))
 
     # Finally, apply limit and offset
     query = query.limit(request.limit).offset(request.offset * request.limit)
