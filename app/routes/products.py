@@ -31,9 +31,6 @@ router = APIRouter(prefix='/products', tags=["Products Available"])
 # }
 
 
-router = APIRouter()
-
-
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_products_list(db: Session = Depends(get_db)):
 
