@@ -440,6 +440,22 @@ def complete_req_by_slotId(slot: tSchemas.IssueSlot, db: Session = Depends(get_d
         # in case if prod manager has not returned total issue qty is used
         new_hist_req.consum_qty = req.issue_qty
 
+        inventory = db.query(models.PManagerMatInventory).filter(
+            models.PManagerMatInventory.m_id == req.m_id).first()
+        if inventory:
+            if inventory.avail_qty >= new_hist_req.consum_qty:
+                inventory.avail_qty -= new_hist_req.consum_qty
+            else:
+                return {
+                    'status': "400",
+                    'msg': f"Insufficient inventory for material ID {req.m_id}"
+                }
+        else:
+            return {
+                'status': "400",
+                'msg': f"Inventory not found for material ID {req.m_id}"
+            }
+
         # remove the requisition list and add it to History Requisitions
         db.add(new_hist_req)
         db.delete(req)
